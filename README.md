@@ -6,7 +6,7 @@ VibeShorts is a mobile-first short-video community starter. The **same source co
 
 Your current Netlify link is `https://jolly-lollipop-4a2d6d.netlify.app`. This source project can replace the static demo once the Firebase environment variables and backend are set up.
 
-1. Use a computer with **Node.js 22+** and npm. Extract this ZIP into a normal folder.
+1. Use a computer with **Node.js 24.12+** and npm. Extract this ZIP into a normal folder.
 2. Create/configure the Firebase project following **Connect Firebase** below. Do not skip Firestore and Storage security rules.
 3. This package now includes the Web App config for Firebase project `vibeshorts-4f8f2` as a fallback in `src/firebase.js`, so you do not need to create `.env.local` just to test sign-in. You can still override it with the six `VITE_FIREBASE_...` environment variables if needed.
 4. Open the Netlify dashboard, select your existing `jolly-lollipop-4a2d6d.netlify.app` site, and deploy this **source project** (the folder containing `package.json` and `netlify.toml`) using a build command of `npm run build` and publish directory `dist`. Do not upload `VibeShorts_Phone_Preview.html` or a preview-only ZIP.
@@ -44,7 +44,7 @@ Firebase currently requires the **Blaze pay-as-you-go plan** to provision or acc
 
 ## 1. Requirements
 
-- Node.js **22 or newer** (Capacitor 8 requirement).
+- Node.js **24.12 or newer** (Capacitor 8 requirement).
 - npm.
 - A Firebase account/project.
 - To build the Android app: Android Studio and an Android SDK installation. Capacitor's environment guide: https://capacitorjs.com/docs/getting-started/environment-setup
@@ -102,7 +102,7 @@ When hosting deploys successfully, Firebase prints the public website URL. That 
 
 ## 5. Create the Android app
 
-You need a computer with Node.js 22+ and Android Studio; an APK cannot be compiled by opening the ZIP on a phone alone.
+You need a computer with Node.js 24.12+ and Android Studio; an APK cannot be compiled by opening the ZIP on a phone alone.
 
 1. Complete Firebase setup first. The same `.env.local` is used for the web and Android build.
 2. Run these commands from the project folder:
