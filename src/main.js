@@ -480,12 +480,34 @@ function wire(){
   if(e.target.closest("#empty-create"))openUpload();
  });
 }
+function showStartupError(error,source="app"){
+ console.error("VibeShorts "+source+" error:",error);
+ try{
+  const msg=(error&&error.message)?String(error.message):"An unexpected error occurred.";
+  let panel=$("runtime-error-panel");
+  if(!panel){
+   panel=document.createElement("section");panel.id="runtime-error-panel";panel.setAttribute("role","alert");
+   panel.style.cssText="position:fixed;z-index:99999;left:12px;right:12px;top:76px;max-height:75vh;overflow:auto;padding:18px;border-radius:14px;background:#fff0f2;color:#751d36;border:1px solid #e2a8b6;box-shadow:0 10px 35px #0003;font:14px/1.5 system-ui,sans-serif";
+   document.body.appendChild(panel);
+  }
+  panel.innerHTML="<strong>VibeShorts needs to restart</strong><p>The app hit a loading error. Your account and saved posts have not been deleted.</p><p id='runtime-error-detail'></p><button id='runtime-reload' style='padding:10px 14px;border:0;border-radius:8px;background:#8e72ff;color:white;font-weight:700'>Reload app</button>";
+  const detail=panel.querySelector("#runtime-error-detail");
+  if(detail)detail.textContent=msg.slice(0,400);
+  const reload=panel.querySelector("#runtime-reload");
+  if(reload)reload.addEventListener("click",()=>location.reload());
+ }catch(fallbackError){console.error("Could not render runtime error panel:",fallbackError);}
+}
+window.addEventListener("error",event=>showStartupError(event.error||event.message,"JavaScript"));
+window.addEventListener("unhandledrejection",event=>showStartupError(event.reason,"background task"));
+
 async function init(){
+ try{
  applyTheme();
  window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change",()=>{if(s.themeMode==="auto")applyTheme();});
  wire();mode("signin");
  if(!firebaseReady){connection("Firebase not configured","error");notice("Firebase settings are missing. Add the VITE_FIREBASE_* values, rebuild and redeploy; sign-up and video posting need Firebase.",true);render();return;}
  connection("Connecting…","pending");startFeed();
- onAuthStateChanged(auth,async u=>{s.user=u;s.profile=null;s.profileItems=[];s.profileFollowers=0;s.profileFollowing=0;if(u){try{s.profile=await ensureProfile(u);}catch(e){console.error("Profile setup failed:",e);toast("Profile setup failed: "+err(e),true);}}await getFollowing();accountUI();render();const params=new URLSearchParams(location.search);const id=params.get("profile");if(id)openProfile(id);const postId=params.get("post");if(postId)openSharedPost(postId);if(s.screen==="profile")showOwnProfile();});
+ onAuthStateChanged(auth,async u=>{try{s.user=u;s.profile=null;s.profileItems=[];s.profileFollowers=0;s.profileFollowing=0;if(u){try{s.profile=await ensureProfile(u);}catch(e){console.error("Profile setup failed:",e);toast("Profile setup failed: "+err(e),true);}}await getFollowing();accountUI();render();const params=new URLSearchParams(location.search);const id=params.get("profile");if(id)openProfile(id);const postId=params.get("post");if(postId)openSharedPost(postId);if(s.screen==="profile")showOwnProfile();}catch(error){showStartupError(error,"account initialization");}});
+ }catch(error){showStartupError(error,"startup");}
 }
-init();
+init().catch(error=>showStartupError(error,"startup"));
