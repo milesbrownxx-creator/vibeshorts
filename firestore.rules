@@ -9,13 +9,14 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.auth.uid == uid
         && request.resource.data.uid == uid
-        && request.resource.data.keys().hasOnly(['uid', 'displayName', 'handle', 'bio', 'createdAt', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['uid', 'displayName', 'handle', 'bio', 'avatarURL', 'createdAt', 'updatedAt'])
         && request.resource.data.displayName is string
         && request.resource.data.displayName.size() <= 40
         && request.resource.data.handle is string
         && request.resource.data.handle.size() <= 25
         && request.resource.data.bio is string
-        && request.resource.data.bio.size() <= 160;
+        && request.resource.data.bio.size() <= 160
+        && (!('avatarURL' in request.resource.data) || (request.resource.data.avatarURL is string && request.resource.data.avatarURL.size() <= 2048));
       allow update: if signedIn()
         && request.auth.uid == uid
         && request.resource.data.uid == uid
@@ -50,12 +51,14 @@ service cloud.firestore {
     match /posts/{postId} {
       allow read: if true;
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['authorUid', 'authorName', 'authorHandle', 'videoURL', 'storagePath', 'caption', 'tags', 'likesCount', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['authorUid', 'authorName', 'authorHandle', 'authorAvatarURL', 'videoURL', 'storagePath', 'caption', 'tags', 'likesCount', 'createdAt'])
         && request.resource.data.authorUid == request.auth.uid
         && request.resource.data.authorName is string
         && request.resource.data.authorName.size() <= 80
         && request.resource.data.authorHandle is string
         && request.resource.data.authorHandle.size() <= 25
+        && request.resource.data.authorAvatarURL is string
+        && request.resource.data.authorAvatarURL.size() <= 2048
         && request.resource.data.likesCount == 0
         && request.resource.data.videoURL is string
         && request.resource.data.videoURL.size() > 0
