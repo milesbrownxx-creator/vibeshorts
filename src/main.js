@@ -306,6 +306,6 @@ async function init(){
  wire();mode("signin");
  if(!firebaseReady){connection("Firebase not configured","error");notice("Firebase settings are missing. Add the VITE_FIREBASE_* values, rebuild and redeploy; sign-up and video posting need Firebase.",true);render();return;}
  connection("Connecting…","pending");startFeed();
- onAuthStateChanged(auth,async u=>{s.user=u;s.profile=null;if(u){try{s.profile=await ensureProfile(u);}catch(e){console.error("Profile setup failed:",e);toast("Profile setup failed: "+err(e),true);}}await getFollowing();accountUI();render();const id=new URLSearchParams(location.search).get("profile");if(id)openProfile(id);if(s.screen==="profile"&&u)showOwnProfile();});
+ onAuthStateChanged(auth,async u=>{s.user=u;s.profile=null;s.profileItems=[];s.profileFollowers=0;s.profileFollowing=0;if(u){try{s.profile=await ensureProfile(u);}catch(e){console.error("Profile setup failed:",e);toast("Profile setup failed: "+err(e),true);}}await getFollowing();accountUI();render();const id=new URLSearchParams(location.search).get("profile");if(id)openProfile(id);if(s.screen==="profile")showOwnProfile();});
 }
 init();
