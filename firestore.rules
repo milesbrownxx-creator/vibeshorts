@@ -58,8 +58,7 @@ service cloud.firestore {
         && request.resource.data.authorName.size() <= 80
         && request.resource.data.authorHandle is string
         && request.resource.data.authorHandle.size() <= 25
-        && request.resource.data.authorAvatarURL is string
-        && request.resource.data.authorAvatarURL.size() <= 2048
+        && (!('authorAvatarURL' in request.resource.data) || (request.resource.data.authorAvatarURL is string && request.resource.data.authorAvatarURL.size() <= 2048))
         && request.resource.data.likesCount == 0
         && request.resource.data.videoURL is string
         && request.resource.data.videoURL.size() > 0
