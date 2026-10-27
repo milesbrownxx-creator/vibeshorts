@@ -1,0 +1,17 @@
+{
+  "name": "VibeShorts",
+  "short_name": "VibeShorts",
+  "description": "Watch, create and share short videos.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080a1b",
+  "theme_color": "#080a1b",
+  "icons": [
+    {
+      "src": "/vibe-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
