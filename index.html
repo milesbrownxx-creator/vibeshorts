@@ -5,8 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#050719" />
   <meta name="description" content="VibeShorts — watch, create and share short videos." />
-  <!-- AdSense publisher ID supplied by owner. Confirm this matches the ID shown in AdSense. -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3927991428568065" crossorigin="anonymous"></script>
+  <!-- Load AdSense only on the hosted website, not inside the Android WebView. -->
+  <script>
+    if (location.protocol === "https:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
+      var adsScript = document.createElement("script");
+      adsScript.async = true;
+      adsScript.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3927991428568065";
+      adsScript.crossOrigin = "anonymous";
+      document.head.appendChild(adsScript);
+    }
+  </script>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="stylesheet" href="/src/style.css" />
   <link rel="icon" href="/vibe-icon.svg" type="image/svg+xml" />
@@ -99,6 +107,6 @@
   <div class="modal" id="share-modal" role="dialog" aria-modal="true" aria-labelledby="share-title"><div class="modal-card modal-narrow"><div class="modal-top"><div><p class="eyebrow">PASS THE VIBE ON</p><h2 id="share-title">Share this on VibeShorts</h2><p id="share-subtitle" class="muted">Send this link to your friends.</p></div><button class="icon-close" data-close="share-modal" aria-label="Close share options">×</button></div><label class="form-field">Share link<input id="share-link-value" type="url" readonly /></label><div class="share-options"><button id="share-native" class="share-option"><span class="share-option-icon">↗</span><span><strong>More apps</strong><small>Open your phone's share menu</small></span></button><button id="share-whatsapp" class="share-option"><span class="share-option-icon whatsapp-mark">◉</span><span><strong>WhatsApp</strong><small>Send the link in a chat</small></span></button><button id="share-facebook" class="share-option"><span class="share-option-icon facebook-mark">f</span><span><strong>Facebook</strong><small>Share the link in a post</small></span></button><button id="share-tiktok" class="share-option"><span class="share-option-icon tiktok-mark">♪</span><span><strong>TikTok</strong><small>Share via apps or copy the link</small></span></button><button id="share-copy-link" class="btn btn-primary btn-full">Copy link</button></div><p id="share-error" class="fine-print">The receiving app must support links. TikTok sharing uses your phone’s share menu when available.</p></div></div>
     <div id="toast" class="toast" role="status"></div>
   <script type="module" src="/src/main.js"></script>
-  <script>if ("serviceWorker" in navigator) window.addEventListener("load", function () { navigator.serviceWorker.register("/sw.js").catch(function (e) { console.warn("Service worker unavailable", e); }); });</script>
+  <script>if ("serviceWorker" in navigator && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") window.addEventListener("load", function () { navigator.serviceWorker.register("/sw.js").catch(function (e) { console.warn("Service worker unavailable", e); }); });</script>
 </body>
 </html>
