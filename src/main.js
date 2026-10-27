@@ -210,9 +210,8 @@ async function showOwnProfile(){
 }
 async function shareOwnProfile(){
  if(!s.user)return askLogin("Sign in before sharing your profile.");
- const url=location.origin+location.pathname+"?profile="+encodeURIComponent(s.user.uid);
- try{if(navigator.share)await navigator.share({title:name()+" on VibeShorts",text:"Watch my VibeShorts reels",url});else{await navigator.clipboard.writeText(url);toast("Profile link copied.");}}
- catch(e){if(e?.name!=="AbortError")toast("Could not share the profile link.",true);}
+ const u=new URL(location.pathname,location.origin);u.searchParams.set("profile",s.user.uid);
+ openShareModal({title:"Share your VibeShorts profile",text:"Follow "+name()+" on VibeShorts",url:u.toString()});
 }
 function toggleSavedPost(id){
  try{
