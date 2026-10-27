@@ -4,7 +4,7 @@ import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, increment, limit, 
 import { getDownloadURL, ref as storageRef, uploadBytesResumable, deleteObject } from "firebase/storage";
 
 const $ = (id) => document.getElementById(id);
-const s = { user:null, profile:null, posts:[], profileItems:[], profileFollowers:0, profileFollowing:0, profileTab:"grid", screen:"home", following:new Set(), filter:"For You", tag:"", commentPost:null, stopFeed:null, stopComments:null };
+const s = { user:null, profile:null, posts:[], profileItems:[], profileFollowers:0, profileFollowing:0, profileTab:"grid", screen:"home", following:new Set(), filter:"For You", tag:"", commentPost:null, sharePayload:null, sharedPostHandled:false, stopFeed:null, stopComments:null, themeMode:"auto" };
 const messages = {
  "auth/email-already-in-use":"That email already has an account. Sign in instead.",
  "auth/invalid-email":"Enter a valid email address.",
@@ -15,12 +15,68 @@ const messages = {
  "auth/network-request-failed":"Network error. Check your internet connection.",
  "auth/too-many-requests":"Too many attempts. Wait a little and retry.",
  "auth/operation-not-allowed":"Enable Email/Password in Firebase Authentication.",
- "storage/unauthorized":"Firebase Storage denied the upload. Check Storage setup and rules.",
- "permission-denied":"Firebase denied this action. Check the published Firestore/Storage rules."
+ "storage/unauthorized":"Storage rejected this upload. Make sure Firebase Storage is enabled and the latest Storage rules are published.",
+ "storage/bucket-not-found":"Firebase Storage bucket was not found. Check the bucket name in Firebase and the app configuration.",
+ "storage/project-not-found":"Firebase could not find the Storage project. Check the Firebase project configuration.",
+ "storage/quota-exceeded":"Storage quota was exceeded. Check Firebase billing and usage limits.",
+ "storage/retry-limit-exceeded":"The upload connection failed repeatedly. Try a stronger internet connection or a smaller video.",
+ "storage/canceled":"The upload was canceled. Try again.",
+ "permission-denied":"Firebase denied this action. The deployed Firestore or Storage rules may need updating.",
+ "unavailable":"The service is temporarily unavailable. Check your internet connection and try again."
 };
 function err(e){ return messages[e && e.code] || (e && e.message) || "Something went wrong. Try again."; }
 function esc(x){ return String(x == null ? "" : x).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function safeUrl(x){ try { const u=new URL(x, location.href); return u.protocol==="https:" || u.origin===location.origin ? u.href : ""; } catch { return ""; } }
+function photoURL(){return safeUrl(s.profile?.avatarURL||s.user?.photoURL||"");}
+function setAvatar(el,url,fallback,allowBlob=false){
+ if(!el)return;
+ let src=safeUrl(url);
+ if(!src&&allowBlob&&typeof url==="string"&&url.startsWith("blob:"))src=url;
+ el.replaceChildren();
+ el.classList.toggle("avatar-has-image",!!src);
+ if(src){const img=document.createElement("img");img.className="avatar-image";img.src=src;img.alt="";img.draggable=false;el.appendChild(img);}
+ else el.textContent=fallback||"V";
+}
+function avatarHTML(label,url){
+ const src=safeUrl(url);
+ return src?'<img class="avatar-image" src="'+esc(src)+'" alt="" loading="lazy">':esc(initials(label));
+}
+function inferVideoMime(file){
+ if(file?.type?.startsWith("video/"))return file.type;
+ const ext=String(file?.name||"").toLowerCase().split(".").pop();
+ return ({mp4:"video/mp4",m4v:"video/x-m4v",mov:"video/quicktime",webm:"video/webm",ogv:"video/ogg",ogg:"video/ogg",3gp:"video/3gpp",3gpp:"video/3gpp",mkv:"video/x-matroska",avi:"video/x-msvideo",mpeg:"video/mpeg",mpg:"video/mpeg"}[ext]||"");
+}
+function inferImageMime(file){
+ if(file?.type?.startsWith("image/"))return file.type;
+ const ext=String(file?.name||"").toLowerCase().split(".").pop();
+ return ({jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",webp:"image/webp",gif:"image/gif",heic:"image/heic",heif:"image/heif"}[ext]||"");
+}
+function applyTheme(){
+ let mode="auto";try{mode=localStorage.getItem("vibeshorts-theme")||"auto";}catch{}
+ if(!["auto","light","dark"].includes(mode))mode="auto";
+ s.themeMode=mode;
+ const dark=mode==="dark"||(mode==="auto"&&window.matchMedia?.("(prefers-color-scheme: dark)").matches);
+ document.documentElement.dataset.theme=dark?"dark":"light";
+ const b=$("top-theme");
+ if(b){b.textContent=mode==="dark"?"☾":mode==="light"?"☀":"◐";b.title="Theme: "+mode[0].toUpperCase()+mode.slice(1)+" · tap to change";b.setAttribute("aria-label",b.title);}
+ const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.content=dark?"#101014":"#ffffff";
+}
+function cycleTheme(){
+ const next=s.themeMode==="auto"?"light":s.themeMode==="light"?"dark":"auto";
+ try{localStorage.setItem("vibeshorts-theme",next);}catch{}
+ applyTheme();toast("Appearance set to "+next+".");
+}
+function copyText(text){
+ if(navigator.clipboard?.writeText)return navigator.clipboard.writeText(text);
+ return new Promise((resolve,reject)=>{
+  const area=document.createElement("textarea");area.value=text;area.setAttribute("readonly","");area.style.position="fixed";area.style.opacity="0";document.body.appendChild(area);area.select();
+  const ok=document.execCommand("copy");area.remove();ok?resolve():reject(new Error("Copy was not permitted"));
+ });
+}
+function openExternal(url){
+ const w=window.open(url,"_blank","noopener,noreferrer");
+ if(!w)location.href=url;
+}
 function initials(n){ const a=String(n||"Creator").trim().split(/\s+/); return ((a[0]||"C")[0]+(a.length>1?a[1][0]:"")).toUpperCase(); }
 function name(){ return s.profile?.displayName || s.user?.displayName || (s.user?.email||"").split("@")[0] || "Creator"; }
 function handle(){ return s.profile?.handle || name().toLowerCase().replace(/[^a-z0-9_]/g,"").slice(0,20) || "creator"; }
@@ -37,7 +93,7 @@ function connection(txt,kind){ const e=$("connection-state"); e.lastElementChild
 async function ensureProfile(u){
  const r=doc(db,"profiles",u.uid), snap=await getDoc(r); if(snap.exists()) return snap.data();
  const n=(u.displayName||(u.email||"").split("@")[0]||"Creator").slice(0,40);
- const p={uid:u.uid,displayName:n,handle:n.toLowerCase().replace(/[^a-z0-9_]/g,"").slice(0,20)||("creator"+u.uid.slice(0,6)),bio:"",createdAt:serverTimestamp(),updatedAt:serverTimestamp()};
+ const p={uid:u.uid,displayName:n,handle:n.toLowerCase().replace(/[^a-z0-9_]/g,"").slice(0,20)||("creator"+u.uid.slice(0,6)),bio:"",avatarURL:u.photoURL||"",createdAt:serverTimestamp(),updatedAt:serverTimestamp()};
  await setDoc(r,p); return {...p,createdAt:new Date()};
 }
 function accountUI(){
@@ -45,8 +101,18 @@ function accountUI(){
  $("header-auth").textContent=yes?"Sign out":"Sign in";
  $("header-signup").classList.toggle("hidden",yes);
  $("header-profile").classList.toggle("hidden",!yes);
+ setAvatar($("header-profile"),photoURL(),initials(name()));
+ setAvatar($("composer-avatar"),photoURL(),initials(name()));
+ setAvatar($("right-avatar"),photoURL(),initials(name()));
+ setAvatar($("profile-screen-avatar"),photoURL(),initials(name()));
+ const story=$("story-self-photo");
+ if(story){const src=photoURL();story.style.backgroundImage=src?'url("'+src.replace(/["\\]/g,"\\function accountUI(){
+ const yes=!!s.user;
+ $("header-auth").textContent=yes?"Sign out":"Sign in";
+ $("header-signup").classList.toggle("hidden",yes);
+ $("header-profile").classList.toggle("hidden",!yes);
  $("header-profile").textContent=initials(name());
- $("composer-avatar").textContent=initials(name()); $("right-avatar").textContent=initials(name());
+ $("composer-avatar").textContent=initials(name()); $("right-avatar").textContent=initials(name());")+'")':"";story.textContent=src?"":yes?initials(name()):"＋";}
  $("creator-name").textContent=yes?name():"Guest creator";
  $("creator-handle").textContent=yes?"@"+handle():"Sign in to build your profile";
  $("account-action").textContent=yes?"Edit your profile":"Create your profile";
@@ -55,7 +121,6 @@ function accountUI(){
  $("my-following-count").textContent=s.following.size;
  if($("story-self-photo")) $("story-self-photo").textContent=yes?initials(name()):"＋";
  $("profile-screen-handle").textContent=yes?handle():"your_profile";
- $("profile-screen-avatar").textContent=initials(name());
  $("profile-screen-name").textContent=yes?name():"Join VibeShorts";
  $("profile-screen-bio-text").textContent=yes?(s.profile?.bio||"Welcome to my VibeShorts page."): "Sign in or create an account to share reels, follow creators and build your profile.";
  $("profile-screen-post-count").textContent=yes?(s.profileItems.length||s.posts.filter(p=>p.authorUid===s.user?.uid).length):"—";
@@ -76,10 +141,10 @@ function formatCount(n){
 function postCard(p){
  const url=safeUrl(p.videoURL); if(!url)return "";
  const id=esc(p.id), n=esc(p.authorName||"Creator"), h=esc(p.authorHandle||"creator"), cap=esc(p.caption||""), tag=esc(p.tags||"");
- const mine=s.user?.uid===p.authorUid;
+ const mine=s.user?.uid===p.authorUid, authorAvatar=avatarHTML(p.authorName||"Creator",p.authorAvatarURL);
  const saved=(()=>{try{return (JSON.parse(localStorage.getItem("vibeshorts-saved")||"[]")).includes(p.id);}catch{return false;}})();
  const tagHtml=tag.split(/\s+/).filter(x=>x.startsWith("#")).map(x=>'<button data-tag="'+esc(x.slice(1))+'">'+esc(x)+'</button>').join(" ");
- return '<article class="reel-card insta-post" id="post-'+id+'"><header class="insta-post-header"><button class="creator-link" data-profile="'+esc(p.authorUid)+'"><span class="avatar">'+esc(initials(p.authorName))+'</span><span class="creator-meta"><strong>'+n+'</strong><small>@'+h+' · '+esc(dateText(p.createdAt))+'</small></span></button>'+(mine?'<button class="icon-button" data-delete-post="'+id+'" aria-label="Delete post">•••</button>':'<button class="icon-button" aria-label="More options" data-post-more="'+id+'">•••</button>')+'</header><video class="reel-video" src="'+esc(url)+'" controls playsinline preload="metadata"></video><div class="insta-post-content"><div class="insta-actions"><div class="insta-actions-left"><button class="social-icon" data-like-post="'+id+'" aria-label="Like reel">♡</button><button class="social-icon" data-comments-post="'+id+'" aria-label="Comments">◯</button><button class="social-icon" data-share-post="'+id+'" aria-label="Share reel">➤</button></div><button class="social-icon save-post '+(saved?"is-saved":"")+'" data-save-post="'+id+'" aria-label="'+(saved?"Remove saved reel":"Save reel")+'">'+(saved?"▣":"♧")+'</button></div><p class="insta-like-count">'+formatCount(p.likesCount||0)+' likes</p>'+(cap?'<p class="insta-caption"><strong>'+n+'</strong> '+cap+'</p>':'')+(tagHtml?'<p class="reel-tags">'+tagHtml+'</p>':'')+'<button class="view-comments" data-comments-post="'+id+'">View comments</button><div class="insta-date">'+esc(dateText(p.createdAt))+'</div></div></article>';
+ return '<article class="reel-card insta-post" id="post-'+id+'"><header class="insta-post-header"><button class="creator-link" data-profile="'+esc(p.authorUid)+'"><span class="avatar">'+authorAvatar+'</span><span class="creator-meta"><strong>'+n+'</strong><small>@'+h+' · '+esc(dateText(p.createdAt))+'</small></span></button>'+(mine?'<button class="icon-button" data-delete-post="'+id+'" aria-label="Delete post">•••</button>':'<button class="icon-button" aria-label="More options" data-post-more="'+id+'">•••</button>')+'</header><video class="reel-video" src="'+esc(url)+'" controls playsinline preload="metadata"></video><div class="insta-post-content"><div class="insta-actions"><div class="insta-actions-left"><button class="social-icon" data-like-post="'+id+'" aria-label="Like reel">♡</button><button class="social-icon" data-comments-post="'+id+'" aria-label="Comments">◯</button><button class="social-icon" data-share-post="'+id+'" aria-label="Share reel">➤</button></div><button class="social-icon save-post '+(saved?"is-saved":"")+'" data-save-post="'+id+'" aria-label="'+(saved?"Remove saved reel":"Save reel")+'">'+(saved?"▣":"♧")+'</button></div><p class="insta-like-count">'+formatCount(p.likesCount||0)+' likes</p>'+(cap?'<p class="insta-caption"><strong>'+n+'</strong> '+cap+'</p>':'')+(tagHtml?'<p class="reel-tags">'+tagHtml+'</p>':'')+'<button class="view-comments" data-comments-post="'+id+'">View comments</button><div class="insta-date">'+esc(dateText(p.createdAt))+'</div></div></article>';
 }
 function visible(){
  let p=s.posts.slice();
@@ -177,7 +242,7 @@ async function openProfile(uid){
   const items=ps.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0));
   $("profile-modal-title").textContent=(p.displayName||"Creator")+"'s profile";
   const follow=s.following.has(uid), self=s.user?.uid===uid;
-  $("profile-view-content").innerHTML='<div class="profile-hero"><div class="avatar avatar-large">'+esc(initials(p.displayName))+'</div><div class="profile-hero-copy"><h3>'+esc(p.displayName||"Creator")+'</h3><p class="muted">@'+esc(p.handle||"creator")+'</p><p>'+esc(p.bio||"No bio yet.")+'</p></div></div><div class="profile-numbers"><span><b>'+items.length+'</b> videos</span><span><b>'+fs.size+'</b> followers</span><span><b>'+gs.size+'</b> following</span></div>'+(self?'<button class="btn btn-outline" id="profile-edit-from-view">Edit profile</button>':s.user?'<button class="btn '+(follow?"btn-outline":"btn-primary")+'" data-follow-uid="'+esc(uid)+'">'+(follow?"Following · Unfollow":"＋ Follow creator")+'</button>':'<button class="btn btn-primary" id="profile-signin">Sign in to follow</button>');
+  $("profile-view-content").innerHTML='<div class="profile-hero"><div class="avatar avatar-large">'+avatarHTML(p.displayName,p.avatarURL)+'</div><div class="profile-hero-copy"><h3>'+esc(p.displayName||"Creator")+'</h3><p class="muted">@'+esc(p.handle||"creator")+'</p><p>'+esc(p.bio||"No bio yet.")+'</p></div></div><div class="profile-numbers"><span><b>'+items.length+'</b> videos</span><span><b>'+fs.size+'</b> followers</span><span><b>'+gs.size+'</b> following</span></div>'+(self?'<button class="btn btn-outline" id="profile-edit-from-view">Edit profile</button>':s.user?'<button class="btn '+(follow?"btn-outline":"btn-primary")+'" data-follow-uid="'+esc(uid)+'">'+(follow?"Following · Unfollow":"＋ Follow creator")+'</button>':'<button class="btn btn-primary" id="profile-signin">Sign in to follow</button>');
   $("profile-posts").innerHTML=items.map(postCard).filter(Boolean).join("")||"<p class='muted empty-inline'>This creator has not published a video yet.</p>";
  }catch(e){$("profile-view-content").innerHTML='<p class="form-error">'+esc(err(e))+'</p>';}
 }
@@ -210,45 +275,141 @@ function openUpload(){
 }
 function preview(){
  const f=$("video-file").files?.[0]; if(!f)return;
- if(!f.type.startsWith("video/")){problem("upload-error","Choose a video file such as MP4 or WebM.");$("video-file").value="";return;}
+ const mime=inferVideoMime(f);
+ if(!mime){problem("upload-error","This file type was not recognized as a video. Choose MP4, MOV, WebM or another supported video.");$("video-file").value="";return;}
  if(f.size>=100*1024*1024){problem("upload-error","Choose a video smaller than 100 MB.");$("video-file").value="";return;}
  clearProblem("upload-error");$("file-label").textContent=f.name+" · "+(f.size/1024/1024).toFixed(1)+" MB";
  const v=$("video-preview");if(v.dataset.url)URL.revokeObjectURL(v.dataset.url);v.dataset.url=URL.createObjectURL(f);v.src=v.dataset.url;$("video-preview-wrap").classList.remove("hidden");
 }
 async function uploadVideo(e){
- e.preventDefault();if(!s.user)return askLogin("Sign in before publishing a reel.");
+ e.preventDefault();
+ if(!s.user)return askLogin("Sign in before publishing a reel.");
+ if(!firebaseReady||!db||!storage)return problem("upload-error","Video posting needs Firebase Authentication, Firestore and Storage to be configured in this deployed app.");
  const f=$("video-file").files?.[0];if(!f)return problem("upload-error","Choose a video first.");
- if(!f.type.startsWith("video/")||f.size>=100*1024*1024)return problem("upload-error","Choose a supported video smaller than 100 MB.");
- const btn=$("publish-button");btn.disabled=true;clearProblem("upload-error");$("upload-progress-wrap").classList.remove("hidden");
+ const mime=inferVideoMime(f);
+ if(!mime)return problem("upload-error","This file type was not recognized as a video. Choose MP4, MOV, WebM or another supported video.");
+ if(f.size>=100*1024*1024)return problem("upload-error","Choose a video smaller than 100 MB.");
+ const btn=$("publish-button");btn.disabled=true;clearProblem("upload-error");$("upload-progress-wrap").classList.remove("hidden");$("upload-progress").value=0;$("upload-percent").textContent="0%";$("upload-status").textContent="Starting upload…";
  const filename=f.name.toLowerCase().replace(/[^a-z0-9._-]/g,"_").slice(-80)||"video.mp4", path="videos/"+s.user.uid+"/"+Date.now()+"-"+filename;
- const task=uploadBytesResumable(storageRef(storage,path),f,{contentType:f.type});
- task.on("state_changed",snap=>{const n=Math.round(snap.bytesTransferred/snap.totalBytes*100);$("upload-progress").value=n;$("upload-percent").textContent=n+"%";$("upload-status").textContent=n===100?"Saving post…":"Uploading video…";},error=>{btn.disabled=false;problem("upload-error",err(error));},async()=>{
-  try{const url=await getDownloadURL(task.snapshot.ref);await addDoc(collection(db,"posts"),{authorUid:s.user.uid,authorName:name().slice(0,80),authorHandle:handle().slice(0,25),videoURL:url,storagePath:path,caption:$("video-caption").value.trim().slice(0,1200),tags:$("video-tags").value.trim().slice(0,150),likesCount:0,createdAt:serverTimestamp()});close("create-modal");s.filter="For You";s.tag="";render();toast("Your reel is published!");}
-  catch(error){problem("upload-error",err(error));}finally{btn.disabled=false;}
- });
+ try{
+  const task=uploadBytesResumable(storageRef(storage,path),f,{contentType:mime});
+  task.on("state_changed",snap=>{
+   const n=snap.totalBytes?Math.round(snap.bytesTransferred/snap.totalBytes*100):0;
+   $("upload-progress").value=n;$("upload-percent").textContent=n+"%";$("upload-status").textContent=n>=100?"Saving post…":"Uploading video…";
+  },error=>{
+   btn.disabled=false;
+   const detail=err(error);
+   if(error?.code==="storage/unauthorized")problem("upload-error",detail+" In Firebase Console, check Storage → Rules and allow signed-in users to upload their own videos.");
+   else if(error?.code==="storage/bucket-not-found"||error?.code==="storage/project-not-found")problem("upload-error",detail+" Check that this APK/site uses the correct Storage bucket.");
+   else problem("upload-error",detail);
+  },async()=>{
+   try{
+    const url=await getDownloadURL(task.snapshot.ref);
+    await addDoc(collection(db,"posts"),{authorUid:s.user.uid,authorName:name().slice(0,80),authorHandle:handle().slice(0,25),authorAvatarURL:photoURL(),videoURL:url,storagePath:path,caption:$("video-caption").value.trim().slice(0,1200),tags:$("video-tags").value.trim().slice(0,150),likesCount:0,createdAt:serverTimestamp()});
+    close("create-modal");s.filter="For You";s.tag="";render();toast("Your reel is published!");
+   }catch(error){
+    const detail=err(error);
+    problem("upload-error",error?.code==="permission-denied"?detail+" The Firestore post rule may not allow the new post fields yet.":detail);
+   }finally{btn.disabled=false;}
+  });
+ }catch(error){btn.disabled=false;problem("upload-error",err(error));}
 }
 async function deletePost(id){
  if(!s.user||!confirm("Delete this video post? This cannot be undone."))return;
  try{const r=doc(db,"posts",id),snap=await getDoc(r);if(!snap.exists()||snap.data().authorUid!==s.user.uid)throw new Error("You can delete only your own posts.");const path=snap.data().storagePath;if(path){try{await deleteObject(storageRef(storage,path));}catch(cleanupError){console.warn("Storage cleanup failed:",cleanupError);}}await deleteDoc(r);toast("Post deleted.");}catch(e){toast(err(e),true);}
 }
+function postShareUrl(id){
+ const u=new URL(location.pathname,location.origin);u.searchParams.set("post",id);return u.toString();
+}
+function openShareModal(payload){
+ s.sharePayload=payload;
+ $("share-title").textContent=payload.title||"Share on VibeShorts";
+ $("share-subtitle").textContent=payload.text||"Send this link to your friends.";
+ $("share-link-value").value=payload.url||location.href;
+ clearProblem("share-error");open("share-modal");
+}
+function shareText(){return [s.sharePayload?.text||"Watch this on VibeShorts",s.sharePayload?.url||location.href].filter(Boolean).join(" ");}
+async function shareNative(){
+ const p=s.sharePayload||{};
+ try{
+  if(navigator.share){await navigator.share({title:p.title||"VibeShorts",text:p.text||"Watch this on VibeShorts",url:p.url||location.href});}
+  else{await copyText(shareText());toast("Link copied. Choose TikTok, Facebook or WhatsApp and paste it.");}
+ }catch(e){if(e?.name!=="AbortError"){try{await copyText(shareText());toast("Link copied. You can paste it into another app.");}catch{problem("share-error","Sharing is not available in this browser. Copy the link from the field above.");}}}
+}
+async function copyShareLink(){
+ try{await copyText(s.sharePayload?.url||location.href);toast("Link copied. Paste it into TikTok, Facebook, WhatsApp or a message.");}
+ catch{const input=$("share-link-value");input.focus();input.select();problem("share-error","Select the link above and use Copy on your phone.");}
+}
+function shareWhatsApp(){
+ const target="https://wa.me/?text="+encodeURIComponent(shareText());
+ openExternal(target);
+}
+function shareFacebook(){
+ const target="https://www.facebook.com/sharer/sharer.php?u="+encodeURIComponent(s.sharePayload?.url||location.href);
+ openExternal(target);
+}
+async function shareTikTok(){
+ if(navigator.share){await shareNative();return;}
+ try{await copyText(shareText());toast("VibeShorts link copied. Paste it into TikTok or share it from TikTok’s link options.");openExternal("https://www.tiktok.com/");}
+ catch{problem("share-error","Copy the link above, then paste it into TikTok.");}
+}
 async function sharePost(id){
- const p=s.posts.find(x=>x.id===id), url=location.origin+location.pathname+"#post-"+encodeURIComponent(id);
- try{if(navigator.share)await navigator.share({title:"VibeShorts reel",text:p?.caption||"Watch this reel on VibeShorts",url});else{await navigator.clipboard.writeText(url);toast("Reel link copied.");}}catch(e){if(e?.name!=="AbortError")toast("Could not share this reel.",true);}
+ const p=s.posts.find(x=>x.id===id);
+ openShareModal({title:"Share this VibeShorts reel",text:p?.caption||"Watch this reel on VibeShorts",url:postShareUrl(id)});
+}
+async function openSharedPost(id){
+ if(!id||s.sharedPostHandled||!db)return;
+ s.sharedPostHandled=true;
+ try{
+  let p=s.posts.find(x=>x.id===id);
+  if(!p){const snap=await getDoc(doc(db,"posts",id));if(!snap.exists())throw new Error("This reel could not be found. It may have been removed or is not public.");p={id:snap.id,...snap.data()};s.posts=[p,...s.posts];}
+  s.screen="home";s.filter="For You";render();
+  setTimeout(()=>{const card=$("post-"+id);if(card)card.scrollIntoView({behavior:"smooth",block:"start"});},250);
+ }catch(e){toast(err(e),true);}
 }
 function editProfile(){
  if(!s.user)return askLogin("Sign in to edit your profile.");
- $("profile-display-name").value=s.profile?.displayName||name();$("profile-handle").value=s.profile?.handle||handle();$("profile-bio").value=s.profile?.bio||"";clearProblem("profile-edit-error");open("edit-profile-modal");
+ $("profile-display-name").value=s.profile?.displayName||name();$("profile-handle").value=s.profile?.handle||handle();$("profile-bio").value=s.profile?.bio||"";
+ $("profile-avatar-file").value="";
+ setAvatar($("profile-avatar-preview"),photoURL(),initials(name()));
+ clearProblem("profile-edit-error");open("edit-profile-modal");
+}
+function previewProfilePhoto(){
+ const f=$("profile-avatar-file").files?.[0];if(!f)return;
+ const mime=inferImageMime(f);
+ if(!mime){problem("profile-edit-error","Choose a JPG, PNG, WebP or other supported image.");$("profile-avatar-file").value="";return;}
+ if(f.size>5*1024*1024){problem("profile-edit-error","Choose a profile picture smaller than 5 MB.");$("profile-avatar-file").value="";return;}
+ clearProblem("profile-edit-error");
+ const old=$("profile-avatar-preview").dataset.previewUrl;if(old)URL.revokeObjectURL(old);
+ const url=URL.createObjectURL(f);$("profile-avatar-preview").dataset.previewUrl=url;
+ setAvatar($("profile-avatar-preview"),url,initials(name()),true);
 }
 async function saveProfile(e){
  e.preventDefault();if(!s.user)return askLogin("Sign in to edit your profile.");
- const n=$("profile-display-name").value.trim().slice(0,40), h=$("profile-handle").value.trim().toLowerCase(), bio=$("profile-bio").value.trim().slice(0,160);
+ const n=$("profile-display-name").value.trim().slice(0,40), h=$("profile-handle").value.trim().toLowerCase(), bio=$("profile-bio").value.trim().slice(0,160), photo=$("profile-avatar-file").files?.[0];
  if(!n||!/^[a-z0-9_]{3,20}$/.test(h))return problem("profile-edit-error","Enter a name and a username using 3–20 letters, numbers or underscores.");
- const b=$("profile-save-button");b.disabled=true;
- try{await updateProfile(s.user,{displayName:n});const p={uid:s.user.uid,displayName:n,handle:h,bio,createdAt:s.profile?.createdAt||serverTimestamp(),updatedAt:serverTimestamp()};await setDoc(doc(db,"profiles",s.user.uid),p,{merge:true});s.profile=p;accountUI();render();close("edit-profile-modal");toast("Profile updated.");}catch(e){problem("profile-edit-error",err(e));}finally{b.disabled=false;}
+ if(photo&&(!inferImageMime(photo)||photo.size>5*1024*1024))return problem("profile-edit-error","Choose a supported image smaller than 5 MB.");
+ if(photo&&!storage)return problem("profile-edit-error","Firebase Storage is not configured. Enable Storage before uploading a profile picture.");
+ const b=$("profile-save-button");b.disabled=true;clearProblem("profile-edit-error");
+ try{
+  let avatarURL=s.profile?.avatarURL||s.user?.photoURL||"";
+  if(photo){
+   const mime=inferImageMime(photo), fileName=photo.name.toLowerCase().replace(/[^a-z0-9._-]/g,"_").slice(-70)||"profile.jpg";
+   const target=storageRef(storage,"avatars/"+s.user.uid+"/"+Date.now()+"-"+fileName);
+   const task=uploadBytesResumable(target,photo,{contentType:mime});
+   const snap=await new Promise((resolve,reject)=>task.on("state_changed",null,reject,()=>resolve(task.snapshot)));
+   avatarURL=await getDownloadURL(snap.ref);
+  }
+  await updateProfile(s.user,{displayName:n,photoURL:avatarURL||""});
+  const p={uid:s.user.uid,displayName:n,handle:h,bio,avatarURL,createdAt:s.profile?.createdAt||serverTimestamp(),updatedAt:serverTimestamp()};
+  await setDoc(doc(db,"profiles",s.user.uid),p,{merge:true});
+  s.profile=p;accountUI();render();if(s.screen==="profile")await showOwnProfile();close("edit-profile-modal");toast("Profile updated.");
+ }catch(e){problem("profile-edit-error",err(e));}
+ finally{b.disabled=false;}
 }
 async function authSubmit(e){
  e.preventDefault();if(!firebaseReady)return problem("auth-error","Firebase is not configured in this build.");const up=$("auth-form").dataset.mode==="signup", email=$("auth-email").value.trim(), pass=$("auth-password").value, b=$("auth-submit");b.disabled=true;clearProblem("auth-error");
- try{if(up){const n=$("display-name").value.trim().slice(0,40);if(!n)throw new Error("Enter a display name.");const cr=await createUserWithEmailAndPassword(auth,email,pass);await updateProfile(cr.user,{displayName:n});await setDoc(doc(db,"profiles",cr.user.uid),{uid:cr.user.uid,displayName:n,handle:n.toLowerCase().replace(/[^a-z0-9_]/g,"").slice(0,20)||("creator"+cr.user.uid.slice(0,6)),bio:"",createdAt:serverTimestamp(),updatedAt:serverTimestamp()});toast("Welcome to VibeShorts! Account created.");}else{await signInWithEmailAndPassword(auth,email,pass);toast("You are signed in.");}close("auth-modal");}
+ try{if(up){const n=$("display-name").value.trim().slice(0,40);if(!n)throw new Error("Enter a display name.");const cr=await createUserWithEmailAndPassword(auth,email,pass);await updateProfile(cr.user,{displayName:n});await setDoc(doc(db,"profiles",cr.user.uid),{uid:cr.user.uid,displayName:n,handle:n.toLowerCase().replace(/[^a-z0-9_]/g,"").slice(0,20)||("creator"+cr.user.uid.slice(0,6)),bio:"",avatarURL:"",createdAt:serverTimestamp(),updatedAt:serverTimestamp()});toast("Welcome to VibeShorts! Account created.");}else{await signInWithEmailAndPassword(auth,email,pass);toast("You are signed in.");}close("auth-modal");}
  catch(error){problem("auth-error",err(error));}finally{b.disabled=false;}
 }
 async function resetPassword(){const email=$("auth-email").value.trim();if(!email)return problem("auth-error","Enter your email address first.");try{await sendPasswordResetEmail(auth,email);toast("Password reset email sent. Check your inbox.");clearProblem("auth-error");}catch(e){problem("auth-error",err(e));}}
@@ -257,6 +418,13 @@ function makeScript(e){e.preventDefault();const topic=$("script-topic").value.tr
 function wire(){
  $("header-auth").addEventListener("click",()=>s.user?signOut(auth).then(()=>toast("Signed out." )).catch(e=>toast(err(e),true)):(mode("signin"),open("auth-modal")));
  $("top-create").addEventListener("click",openUpload);
+ $("top-theme").addEventListener("click",cycleTheme);
+ $("share-native").addEventListener("click",shareNative);
+ $("share-whatsapp").addEventListener("click",shareWhatsApp);
+ $("share-facebook").addEventListener("click",shareFacebook);
+ $("share-tiktok").addEventListener("click",shareTikTok);
+ $("share-copy-link").addEventListener("click",copyShareLink);
+ $("profile-avatar-file").addEventListener("change",previewProfilePhoto);
  $("top-activity").addEventListener("click",()=>s.user?showOwnProfile():askLogin("Sign in to open your account."));
  $("story-self").addEventListener("click",openUpload);
  document.querySelectorAll("[data-story-preview]").forEach(b=>b.addEventListener("click",()=>toast("Stories are a visual preview for now. Watch published reels in the feed.")));
@@ -303,9 +471,11 @@ function wire(){
  });
 }
 async function init(){
+ applyTheme();
+ window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change",()=>{if(s.themeMode==="auto")applyTheme();});
  wire();mode("signin");
  if(!firebaseReady){connection("Firebase not configured","error");notice("Firebase settings are missing. Add the VITE_FIREBASE_* values, rebuild and redeploy; sign-up and video posting need Firebase.",true);render();return;}
  connection("Connecting…","pending");startFeed();
- onAuthStateChanged(auth,async u=>{s.user=u;s.profile=null;s.profileItems=[];s.profileFollowers=0;s.profileFollowing=0;if(u){try{s.profile=await ensureProfile(u);}catch(e){console.error("Profile setup failed:",e);toast("Profile setup failed: "+err(e),true);}}await getFollowing();accountUI();render();const id=new URLSearchParams(location.search).get("profile");if(id)openProfile(id);if(s.screen==="profile")showOwnProfile();});
+ onAuthStateChanged(auth,async u=>{s.user=u;s.profile=null;s.profileItems=[];s.profileFollowers=0;s.profileFollowing=0;if(u){try{s.profile=await ensureProfile(u);}catch(e){console.error("Profile setup failed:",e);toast("Profile setup failed: "+err(e),true);}}await getFollowing();accountUI();render();const params=new URLSearchParams(location.search);const id=params.get("profile");if(id)openProfile(id);const postId=params.get("post");if(postId)openSharedPost(postId);if(s.screen==="profile")showOwnProfile();});
 }
 init();
