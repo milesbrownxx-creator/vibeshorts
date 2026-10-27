@@ -1,0 +1,28 @@
+VIBESHORTS — DEPLOY-READY WEBSITE FOLDER (CDN FALLBACK)
+
+This kit includes a prepared dist folder that does not need npm install on your computer. It loads Firebase Web SDK 13.1.0 from Google's official gstatic CDN. The regular source project remains available for a normal npm/Vite build later.
+
+BEFORE DEPLOYING — Firebase Console
+1. Open https://console.firebase.google.com/ and choose project vibeshorts-4f8f2.
+2. Authentication > Settings > Authorized domains: add jolly-lollipop-4a2d6d.netlify.app if it is missing.
+3. Firestore Database > Rules: publish the contents of firestore.rules from the source project.
+4. Build > Storage: create/enable the default bucket if prompted. Review Firebase billing and possible usage charges first, then publish storage.rules from the source project. Set billing alerts and test with small files.
+
+UPLOAD — Netlify
+1. Sign in at https://app.netlify.com/ using the account that owns jolly-lollipop-4a2d6d.netlify.app.
+2. Open that existing site and choose Deploys.
+3. Manually deploy the contents of the dist folder in this kit (deploy the folder contents, not the parent source directory). If Netlify only presents a ZIP upload, use VibeShorts_DeployReady_Static.zip.
+4. Wait for Netlify to report a successful deployment and open https://jolly-lollipop-4a2d6d.netlify.app.
+
+TEST
+1. Confirm the top status reads Firebase ready (before sign-in), not Demo preview.
+2. Create a test account, sign out, then sign back in.
+3. Upload a small video you own.
+4. Open the site in another browser/device and verify the post is visible. Check comments, likes, and follows.
+
+IMPORTANT
+- This package has been prepared locally but has NOT been published to your live Netlify site, and Firebase security rules have NOT been published from here.
+- Firebase Storage may require billing to be enabled and can incur charges. Review terms and set budget alerts before enabling public video uploads.
+- Firebase Web API configuration is designed for client-side use; access control must come from correct Firebase security rules and API-key restrictions. Do not put private service-account keys in a website.
+- The CDN fallback requires access to www.gstatic.com when users load the app. The standard npm/Vite build is generally better for production, but npm registry DNS failed in this environment so that build could not be completed here.
+- Before a broad public launch, add moderation/reporting, privacy policy, terms and abuse protections.

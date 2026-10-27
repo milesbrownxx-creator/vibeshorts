@@ -1,0 +1,37 @@
+PUBLISH THE CONNECTED VIBESHORTS BUILD TO YOUR EXISTING NETLIFY SITE
+
+IMPORTANT: Complete START_HERE_WINDOWS.txt and CONNECT_AND_BUILD.bat first. Upload the dist output from the connected build—not the source folder and not the older preview HTML.
+
+A. Firebase Authentication domain
+1. Open https://console.firebase.google.com/ and select the correct project.
+2. Go to Authentication > Settings > Authorized domains.
+3. Add this hostname if it is not already listed:
+   jolly-lollipop-4a2d6d.netlify.app
+
+B. Publish Firestore security rules
+1. Firebase Console > Build > Firestore Database > Rules.
+2. Replace the editor contents with the contents of this project's firestore.rules file.
+3. Click Publish.
+
+C. Enable video storage and publish Storage security rules
+1. Firebase Console > Build > Storage. Create/enable the default bucket if prompted.
+2. Review Firebase's current billing prompt before upgrading. Video storage may require Blaze pay-as-you-go and charges can apply.
+3. Open Storage > Rules, replace the editor contents with this project's storage.rules, and click Publish.
+4. Set budget alerts and test with small videos before allowing broader use.
+
+D. Upload the new web build
+1. Open https://app.netlify.com/ and sign into the account that owns the existing VibeShorts site.
+2. Open the site named for https://jolly-lollipop-4a2d6d.netlify.app and select Deploys.
+3. Use the manual deploy/drop area and upload the dist folder created by CONNECT_AND_BUILD.bat. If the dashboard asks for a folder of deploy-ready files, select dist (not the parent source folder).
+4. Wait for Netlify to show a successful deploy, then reload the site on your PC and Android phone. If manual deploy is unavailable because the site uses a Git build, set the six VITE_FIREBASE_* environment variables in Site configuration > Environment variables, set build command to npm run build and publish directory to dist, and trigger a new deploy from the connected repository.
+
+E. Test before sharing
+1. Confirm the published website has visible **Sign in** and **Sign up** buttons. Create a test account, open its profile via the avatar, edit the bio, then copy/share the profile URL.
+2. Open the Netlify site and confirm the status says Firebase ready rather than Demo preview.
+3. Create a test account, sign out, then sign back in.
+4. Upload a small video you own.
+5. Open the same site in another browser or phone, create/sign into a second account, and verify that the first video appears. Visit the creator profile and test follow/unfollow plus follower counts.
+
+If the app still displays Demo preview, the build did not contain the six Firebase values. Re-run CONNECT_AND_BUILD.bat and check each value carefully. If uploads fail, verify that Storage exists and the storage.rules are published. If sign-in fails on Netlify, check Authentication's Authorized domains.
+
+Do not use production user accounts for first testing. The included rules are a starting point and the app still needs moderation/report handling, privacy/terms pages and abuse protections before large-scale public launch.

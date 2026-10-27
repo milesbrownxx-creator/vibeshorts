@@ -1,0 +1,117 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+
+    match /profiles/{uid} {
+      // Public profile information only. Email addresses must not be stored here.
+      allow read: if true;
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.keys().hasOnly(['uid', 'displayName', 'handle', 'bio', 'createdAt', 'updatedAt'])
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 40
+        && request.resource.data.handle is string
+        && request.resource.data.handle.size() <= 25
+        && request.resource.data.bio is string
+        && request.resource.data.bio.size() <= 160;
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.keys().hasOnly(['uid', 'displayName', 'handle', 'bio', 'createdAt', 'updatedAt'])
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 40
+        && request.resource.data.handle is string
+        && request.resource.data.handle.size() <= 25
+        && request.resource.data.bio is string
+        && request.resource.data.bio.size() <= 160;
+      allow delete: if signedIn() && request.auth.uid == uid;
+
+      match /following/{targetUid} {
+        // Following lists are public so profile pages can show following counts.
+        allow read: if true;
+        allow create: if signedIn() && request.auth.uid == uid && targetUid != uid
+          && request.resource.data.uid == targetUid;
+        allow delete: if signedIn() && request.auth.uid == uid && targetUid != uid;
+        allow update: if false;
+      }
+
+      match /followers/{followerUid} {
+        // A follower entry may only be created/deleted by the user it represents.
+        allow read: if true;
+        allow create: if signedIn() && request.auth.uid == followerUid && followerUid != uid
+          && request.resource.data.uid == followerUid;
+        allow delete: if signedIn() && request.auth.uid == followerUid && followerUid != uid;
+        allow update: if false;
+      }
+    }
+
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['authorUid', 'authorName', 'authorHandle', 'videoURL', 'storagePath', 'caption', 'tags', 'likesCount', 'createdAt'])
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.authorName is string
+        && request.resource.data.authorName.size() <= 80
+        && request.resource.data.authorHandle is string
+        && request.resource.data.authorHandle.size() <= 25
+        && request.resource.data.likesCount == 0
+        && request.resource.data.videoURL is string
+        && request.resource.data.videoURL.size() > 0
+        && request.resource.data.videoURL.size() <= 2048
+        && request.resource.data.storagePath is string
+        && request.resource.data.storagePath.matches('videos/' + request.auth.uid + '/.*')
+        && request.resource.data.caption is string
+        && request.resource.data.caption.size() <= 1200
+        && request.resource.data.tags is string
+        && request.resource.data.tags.size() <= 150;
+      allow delete: if signedIn() && resource.data.authorUid == request.auth.uid;
+      // This client supports likes but not post editing; restrict updates to validated like-count changes.
+      allow update: if signedIn() && isValidLikeCountChange();
+
+      function likePath() {
+        return /databases/$(database)/documents/posts/$(postId)/likes/$(request.auth.uid);
+      }
+      function isValidLikeCountChange() {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount'])
+          && ((request.resource.data.likesCount == resource.data.likesCount + 1
+              && !exists(likePath()) && existsAfter(likePath()))
+            || (request.resource.data.likesCount == resource.data.likesCount - 1
+              && exists(likePath()) && !existsAfter(likePath())));
+      }
+
+      match /likes/{uid} {
+        allow read: if signedIn() && request.auth.uid == uid;
+        allow create: if signedIn() && request.auth.uid == uid
+          && request.resource.data.uid == request.auth.uid;
+        allow delete: if signedIn() && request.auth.uid == uid;
+        allow update: if false;
+      }
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if signedIn()
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 500
+          && request.resource.data.authorName is string
+          && request.resource.data.authorName.size() <= 80;
+        allow update: if signedIn() && resource.data.uid == request.auth.uid
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 500;
+        allow delete: if signedIn() && (
+          resource.data.uid == request.auth.uid
+          || get(/databases/$(database)/documents/posts/$(postId)).data.authorUid == request.auth.uid
+        );
+      }
+    }
+
+    // Collection-group queries can read only a signed-in user's own like documents.
+    match /{path=**}/likes/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+    }
+  }
+}

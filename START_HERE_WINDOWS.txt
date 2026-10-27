@@ -1,0 +1,16 @@
+VIBESHORTS — START HERE (WINDOWS PC + ANDROID PHONE)
+
+This project is prepared to connect to your Firebase project. It is not yet connected to your account, and the public Netlify site is not updated until you publish a new deploy.
+
+1. Extract this ZIP fully to a normal folder on your Windows PC.
+2. Install Node.js 22 or newer from https://nodejs.org/ if you do not already have it.
+3. Open the extracted VibeShorts folder and double-click CONNECT_AND_BUILD.bat.
+4. In Firebase Console > Project settings > Your apps > your Web app > SDK setup and configuration > Config, enter the six values when asked. Copy only each value, without quotes or commas.
+5. Let the script install dependencies and build the app. When it finishes, a dist folder will exist inside this project.
+6. Follow DEPLOY_TO_NETLIFY.txt before inviting anyone to use the app.
+
+The Firebase Web App config is browser-side configuration; it is not an Admin SDK private key. Never paste a service-account JSON/private key into this project. Keep .env.local private; it is excluded from the project's Git ignore list.
+
+Shared feed/accounts require Authentication and Firestore. Real video uploads also require Firebase Storage to be enabled. Cloud Storage for Firebase can require the Blaze pay-as-you-go billing plan and can incur costs. Review Firebase's billing terms and set budget alerts before uploading videos.
+
+Core flow included: Email/Password accounts, public Firestore feed, video upload to Storage, likes, follows, comments, responsive web/PWA shell, and a Capacitor configuration for a future Android build. This is not yet a production-scale social network: moderation queue, actual report handling, push notifications, DMs, stories, and payout systems are not complete. Test with two accounts/devices before sharing it widely.
