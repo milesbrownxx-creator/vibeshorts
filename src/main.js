@@ -4,6 +4,15 @@ import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, increment, limit, 
 import { getDownloadURL, ref as storageRef, uploadBytesResumable, deleteObject } from "firebase/storage";
 
 const $ = (id) => document.getElementById(id);
+// Canonical public site used when sharing from the packaged Android WebView.
+const PUBLIC_APP_URL = "https://jolly-lollipop-4a2d6d.netlify.app";
+function publicPageURL(params){
+ const localWeb=location.protocol==="https:"&&location.hostname!=="localhost"&&location.hostname!=="127.0.0.1";
+ const u=localWeb?new URL(location.pathname,location.origin):new URL("/",PUBLIC_APP_URL);
+ u.search="";
+ for(const [key,value] of Object.entries(params||{}))u.searchParams.set(key,String(value));
+ return u.toString();
+}
 const s = { user:null, profile:null, posts:[], profileItems:[], profileFollowers:0, profileFollowing:0, profileTab:"grid", screen:"home", following:new Set(), filter:"For You", tag:"", commentPost:null, sharePayload:null, sharedPostHandled:false, stopFeed:null, stopComments:null, themeMode:"auto" };
 const messages = {
  "auth/email-already-in-use":"That email already has an account. Sign in instead.",
@@ -207,8 +216,8 @@ async function showOwnProfile(){
 }
 async function shareOwnProfile(){
  if(!s.user)return askLogin("Sign in before sharing your profile.");
- const u=new URL(location.pathname,location.origin);u.searchParams.set("profile",s.user.uid);
- openShareModal({title:"Share your VibeShorts profile",text:"Follow "+name()+" on VibeShorts",url:u.toString()});
+ const url=publicPageURL({profile:s.user.uid});
+ openShareModal({title:"Share your VibeShorts profile",text:"Follow "+name()+" on VibeShorts",url});
 }
 function toggleSavedPost(id){
  try{
@@ -314,9 +323,7 @@ async function deletePost(id){
  if(!s.user||!confirm("Delete this video post? This cannot be undone."))return;
  try{const r=doc(db,"posts",id),snap=await getDoc(r);if(!snap.exists()||snap.data().authorUid!==s.user.uid)throw new Error("You can delete only your own posts.");const path=snap.data().storagePath;if(path){try{await deleteObject(storageRef(storage,path));}catch(cleanupError){console.warn("Storage cleanup failed:",cleanupError);}}await deleteDoc(r);toast("Post deleted.");}catch(e){toast(err(e),true);}
 }
-function postShareUrl(id){
- const u=new URL(location.pathname,location.origin);u.searchParams.set("post",id);return u.toString();
-}
+function postShareUrl(id){return publicPageURL({post:id});}
 function openShareModal(payload){
  s.sharePayload=payload;
  $("share-title").textContent=payload.title||"Share on VibeShorts";
