@@ -174,3 +174,78 @@ body{background:#fff;color:#171717}
  .profile-screen{padding:0 0 24px}
  .profile-screen-top{margin-top:-10px}
 }
+
+
+/* Upload, sharing, profile-photo and adaptive theme controls */
+.avatar-image{display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.avatar-edit-row{display:flex;align-items:center;gap:15px;padding:4px 0 14px}
+.avatar-edit-controls{display:flex;flex-direction:column;align-items:flex-start;gap:7px}
+.avatar-edit-controls small{font-size:10px}
+.avatar-pick-label{display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+#profile-avatar-file{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.theme-icon{font-size:20px!important}
+.share-options{display:flex;flex-direction:column;gap:9px;margin-top:13px}
+.share-option{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;border:1px solid #e7e7e7;border-radius:10px;background:#fff;color:#171717;text-align:left}
+.share-option:hover{background:#fafafa;border-color:#d8d8d8}
+.share-option-icon{display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;background:#f2f2f2;font-size:22px;font-weight:800}
+.share-option span:last-child{display:flex;flex-direction:column;gap:3px}
+.share-option strong{font-size:12px}
+.share-option small{font-size:10px;color:#777}
+.whatsapp-mark{color:#fff;background:#25a45a}
+.facebook-mark{color:#fff;background:#1877f2}
+.tiktok-mark{color:#fff;background:#151515}
+#share-link-value{font-size:11px!important}
+html[data-theme="dark"] body{background:#0f1014!important;color:#f2f2f5!important}
+html[data-theme="dark"] .topbar{background:#111217!important;border-bottom-color:#292a31!important;color:#f4f4f5!important}
+html[data-theme="dark"] .brand,html[data-theme="dark"] .top-icon-btn{color:#f4f4f5!important}
+html[data-theme="dark"] .app-layout,html[data-theme="dark"] #home-screen,html[data-theme="dark"] .main-column{background:#0f1014!important;color:#f2f2f5!important}
+html[data-theme="dark"] .profile-screen{background:#0f1014!important;color:#f2f2f5!important}
+html[data-theme="dark"] .profile-screen-top,html[data-theme="dark"] .profile-tab-bar{border-color:#2b2c32!important}
+html[data-theme="dark"] .profile-screen-top strong,html[data-theme="dark"] .profile-top-icon,html[data-theme="dark"] .profile-screen-bio,html[data-theme="dark"] .profile-stats b{color:#f2f2f5!important}
+html[data-theme="dark"] .profile-screen-bio p,html[data-theme="dark"] .profile-stats span,html[data-theme="dark"] .profile-screen-message{color:#b5b6bf!important}
+html[data-theme="dark"] .profile-tab{background:#0f1014!important;color:#9c9da6!important}
+html[data-theme="dark"] .profile-tab.active{color:#f2f2f5!important}
+html[data-theme="dark"] .profile-tab.active:after{background:#f2f2f5!important}
+html[data-theme="dark"] .profile-grid-empty{color:#f2f2f5!important}
+html[data-theme="dark"] .profile-grid-empty p{color:#aaaab5!important}
+html[data-theme="dark"] .profile-grid-empty>span{border-color:#f2f2f5!important}
+html[data-theme="dark"] .stories-strip{background:#0f1014!important;border-color:#292a31!important}
+html[data-theme="dark"] .story-name{color:#e1e1e6!important}
+html[data-theme="dark"] .insta-post{background:#0f1014!important;border-bottom-color:#292a31!important}
+html[data-theme="dark"] .insta-post-header,html[data-theme="dark"] .insta-post-content{background:#0f1014!important;color:#f2f2f5!important}
+html[data-theme="dark"] .creator-link,html[data-theme="dark"] .creator-meta strong,html[data-theme="dark"] .insta-like-count,html[data-theme="dark"] .insta-caption{color:#f2f2f5!important}
+html[data-theme="dark"] .creator-meta small,html[data-theme="dark"] .view-comments,html[data-theme="dark"] .insta-date{color:#a3a4ae!important}
+html[data-theme="dark"] .social-icon,html[data-theme="dark"] .icon-button{color:#f4f4f5!important}
+html[data-theme="dark"] .reel-video{background:#17181e!important}
+html[data-theme="dark"] .feed-switcher{border-color:#2b2c32!important}
+html[data-theme="dark"] .feed-tab{color:#c4c5ce!important}
+html[data-theme="dark"] .feed-tab.active,html[data-theme="dark"] .feed-tab:hover{background:#2a202b!important;color:#ffd9ef!important}
+html[data-theme="dark"] .composer,html[data-theme="dark"] .panel,html[data-theme="dark"] .rightbar .panel,html[data-theme="dark"] .side-promo,html[data-theme="dark"] .tip-card{background:#17181e!important;border-color:#2e3038!important;color:#f2f2f5!important}
+html[data-theme="dark"] .composer-input{background:#0f1014!important;border-color:#30313a!important;color:#c3c4ce!important}
+html[data-theme="dark"] .nav-item{color:#cbccd3!important}
+html[data-theme="dark"] .nav-item.active,html[data-theme="dark"] .nav-item:hover{background:#29212b!important;color:#fff!important}
+html[data-theme="dark"] .muted,html[data-theme="dark"] .welcome-subtitle,html[data-theme="dark"] .side-promo p,html[data-theme="dark"] .right-foot,html[data-theme="dark"] .side-foot{color:#b0b1bc!important}
+html[data-theme="dark"] .modal-card{background:#191a20!important;border-color:#363740!important;color:#f2f2f5!important}
+html[data-theme="dark"] .modal-top h2,html[data-theme="dark"] .form-field{color:#f3f3f6!important}
+html[data-theme="dark"] .modal-top .muted,html[data-theme="dark"] .fine-print{color:#b0b1bc!important}
+html[data-theme="dark"] .form-field input,html[data-theme="dark"] .form-field textarea,html[data-theme="dark"] .form-field select,html[data-theme="dark"] .comment-form input{background:#101116!important;color:#f4f4f6!important;border-color:#383943!important}
+html[data-theme="dark"] .icon-close{background:#24252d!important;border-color:#3a3b45!important;color:#f4f4f6!important}
+html[data-theme="dark"] .auth-tabs{background:#101116!important}
+html[data-theme="dark"] .auth-tabs button.active{background:#292a32!important;color:#f4f4f6!important}
+html[data-theme="dark"] .text-button{color:#f19bd1!important}
+html[data-theme="dark"] .share-option{background:#202128!important;border-color:#393a44!important;color:#f3f3f6!important}
+html[data-theme="dark"] .share-option:hover{background:#292a33!important}
+html[data-theme="dark"] .share-option-icon{background:#393a44!important;color:#fff!important}
+html[data-theme="dark"] .whatsapp-mark{background:#25a45a!important}
+html[data-theme="dark"] .facebook-mark{background:#1877f2!important}
+html[data-theme="dark"] .tiktok-mark{background:#050505!important}
+html[data-theme="dark"] .mobile-nav{background:#121318!important;border-top-color:#2c2d35!important}
+html[data-theme="dark"] .mobile-nav-item{color:#d2d2d9!important}
+html[data-theme="dark"] .mobile-nav-item.active{color:#f19bd1!important}
+html[data-theme="dark"] .empty-state{background:#17181e!important;border-color:#3a3b43!important;color:#f2f2f5!important}
+html[data-theme="dark"] .empty-state p{color:#b7b8c2!important}
+html[data-theme="dark"] .notice{background:#152721!important;border-color:#245c4b!important;color:#c5f4e2!important}
+html[data-theme="dark"] .notice-error,html[data-theme="dark"] .form-error{background:#351a25!important;border-color:#703348!important;color:#ffd4df!important}
+html[data-theme="dark"] .btn-outline{background:#24252d!important;border-color:#3a3b44!important;color:#f2f2f5!important}
+html[data-theme="dark"] .btn:not(.btn-primary){color:#f2f2f5!important}
+html[data-theme="dark"] .btn-primary{color:#fff!important}
