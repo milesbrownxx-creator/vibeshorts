@@ -13,7 +13,7 @@ function publicPageURL(params){
  for(const [key,value] of Object.entries(params||{}))u.searchParams.set(key,String(value));
  return u.toString();
 }
-const s = { user:null, profile:null, posts:[], profileItems:[], profileFollowers:0, profileFollowing:0, profileTab:"grid", screen:"home", following:new Set(), filter:"For You", tag:"", commentPost:null, sharePayload:null, sharedPostHandled:false, stopFeed:null, stopComments:null, themeMode:"auto" };
+const s = { user:null, profile:null, profileCache:{}, posts:[], profileItems:[], profileFollowers:0, profileFollowing:0, profileTab:"grid", screen:"home", following:new Set(), filter:"For You", tag:"", commentPost:null, sharePayload:null, sharedPostHandled:false, stopFeed:null, stopComments:null, themeMode:"auto" };
 const messages = {
  "auth/email-already-in-use":"That email already has an account. Sign in instead.",
  "auth/invalid-email":"Enter a valid email address.",
@@ -147,7 +147,7 @@ function formatCount(n){
 function postCard(p){
  const url=safeUrl(p.videoURL); if(!url)return "";
  const id=esc(p.id), n=esc(p.authorName||"Creator"), h=esc(p.authorHandle||"creator"), cap=esc(p.caption||""), tag=esc(p.tags||"");
- const mine=s.user?.uid===p.authorUid, authorAvatar=avatarHTML(p.authorName||"Creator",p.authorAvatarURL);
+ const mine=s.user?.uid===p.authorUid, authorAvatar=avatarHTML(p.authorName||"Creator",p.authorAvatarURL||s.profileCache[p.authorUid]?.avatarURL);
  const saved=(()=>{try{return (JSON.parse(localStorage.getItem("vibeshorts-saved")||"[]")).includes(p.id);}catch{return false;}})();
  const tagHtml=tag.split(/\s+/).filter(x=>x.startsWith("#")).map(x=>'<button data-tag="'+esc(x.slice(1))+'">'+esc(x)+'</button>').join(" ");
  return '<article class="reel-card insta-post" id="post-'+id+'"><header class="insta-post-header"><button class="creator-link" data-profile="'+esc(p.authorUid)+'"><span class="avatar">'+authorAvatar+'</span><span class="creator-meta"><strong>'+n+'</strong><small>@'+h+' · '+esc(dateText(p.createdAt))+'</small></span></button>'+(mine?'<button class="icon-button" data-delete-post="'+id+'" aria-label="Delete post">•••</button>':'<button class="icon-button" aria-label="More options" data-post-more="'+id+'">•••</button>')+'</header><video class="reel-video" src="'+esc(url)+'" controls playsinline preload="metadata"></video><div class="insta-post-content"><div class="insta-actions"><div class="insta-actions-left"><button class="social-icon" data-like-post="'+id+'" aria-label="Like reel">♡</button><button class="social-icon" data-comments-post="'+id+'" aria-label="Comments">◯</button><button class="social-icon" data-share-post="'+id+'" aria-label="Share reel">➤</button></div><button class="social-icon save-post '+(saved?"is-saved":"")+'" data-save-post="'+id+'" aria-label="'+(saved?"Remove saved reel":"Save reel")+'">'+(saved?"▣":"♧")+'</button></div><p class="insta-like-count">'+formatCount(p.likesCount||0)+' likes</p>'+(cap?'<p class="insta-caption"><strong>'+n+'</strong> '+cap+'</p>':'')+(tagHtml?'<p class="reel-tags">'+tagHtml+'</p>':'')+'<button class="view-comments" data-comments-post="'+id+'">View comments</button><div class="insta-date">'+esc(dateText(p.createdAt))+'</div></div></article>';
@@ -227,11 +227,18 @@ function toggleSavedPost(id){
  }catch(e){toast("This browser could not save the reel.",true);}
 }
 
+async function hydrateCreatorProfiles(){
+ if(!db)return;
+ const ids=[...new Set(s.posts.map(p=>p.authorUid).filter(Boolean))].filter(uid=>!(uid in s.profileCache));
+ if(!ids.length)return;
+ await Promise.all(ids.map(async uid=>{try{const snap=await getDoc(doc(db,"profiles",uid));s.profileCache[uid]=snap.exists()?snap.data():{};}catch(e){s.profileCache[uid]={};}}));
+ render();
+}
 function startFeed(){
  if(!firebaseReady){connection("Firebase not configured","error");render();return;}
  s.stopFeed?.();
  s.stopFeed=onSnapshot(query(collection(db,"posts"),orderBy("createdAt","desc"),limit(60)),snap=>{
-  s.posts=snap.docs.map(d=>({id:d.id,...d.data()})); connection("Firebase connected","ok"); render();
+  s.posts=snap.docs.map(d=>({id:d.id,...d.data()})); connection("Firebase connected","ok"); render();hydrateCreatorProfiles();
  },e=>{console.error(e);connection("Feed error","error");notice("Videos did not load: "+err(e)+" Check that Firestore exists and the current rules are published.",true);s.posts=[];render();});
 }
 async function getFollowing(){
@@ -242,7 +249,7 @@ async function openProfile(uid){
  if(!db||!uid)return; open("profile-modal"); $("profile-view-content").innerHTML="<p class='muted'>Loading creator profile…</p>"; $("profile-posts").innerHTML="";
  try{
   const snap=await getDoc(doc(db,"profiles",uid)); if(!snap.exists())throw new Error("Creator profile not found.");
-  const p=snap.data(), fs=await getDocs(collection(db,"profiles",uid,"followers")), gs=await getDocs(collection(db,"profiles",uid,"following"));
+  const p=snap.data();s.profileCache[uid]=p;const fs=await getDocs(collection(db,"profiles",uid,"followers")), gs=await getDocs(collection(db,"profiles",uid,"following"));
   const ps=await getDocs(query(collection(db,"posts"),where("authorUid","==",uid),limit(30)));
   const items=ps.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0));
   $("profile-modal-title").textContent=(p.displayName||"Creator")+"'s profile";
@@ -310,7 +317,7 @@ async function uploadVideo(e){
   },async()=>{
    try{
     const url=await getDownloadURL(task.snapshot.ref);
-    await addDoc(collection(db,"posts"),{authorUid:s.user.uid,authorName:name().slice(0,80),authorHandle:handle().slice(0,25),authorAvatarURL:photoURL(),videoURL:url,storagePath:path,caption:$("video-caption").value.trim().slice(0,1200),tags:$("video-tags").value.trim().slice(0,150),likesCount:0,createdAt:serverTimestamp()});
+    await addDoc(collection(db,"posts"),{authorUid:s.user.uid,authorName:name().slice(0,80),authorHandle:handle().slice(0,25),videoURL:url,storagePath:path,caption:$("video-caption").value.trim().slice(0,1200),tags:$("video-tags").value.trim().slice(0,150),likesCount:0,createdAt:serverTimestamp()});
     close("create-modal");s.filter="For You";s.tag="";render();toast("Your reel is published!");
    }catch(error){
     const detail=err(error);
@@ -406,7 +413,7 @@ async function saveProfile(e){
   await updateProfile(s.user,{displayName:n,photoURL:avatarURL||""});
   const p={uid:s.user.uid,displayName:n,handle:h,bio,avatarURL,createdAt:s.profile?.createdAt||serverTimestamp(),updatedAt:serverTimestamp()};
   await setDoc(doc(db,"profiles",s.user.uid),p,{merge:true});
-  s.profile=p;accountUI();render();if(s.screen==="profile")await showOwnProfile();close("edit-profile-modal");toast("Profile updated.");
+  s.profile=p;s.profileCache[s.user.uid]=p;accountUI();render();if(s.screen==="profile")await showOwnProfile();close("edit-profile-modal");toast("Profile updated.");
  }catch(e){problem("profile-edit-error",err(e));}
  finally{b.disabled=false;}
 }
