@@ -106,23 +106,20 @@ function accountUI(){
  setAvatar($("right-avatar"),photoURL(),initials(name()));
  setAvatar($("profile-screen-avatar"),photoURL(),initials(name()));
  const story=$("story-self-photo");
- if(story){const src=photoURL();story.style.backgroundImage=src?'url("'+src.replace(/["\\]/g,"\\function accountUI(){
- const yes=!!s.user;
- $("header-auth").textContent=yes?"Sign out":"Sign in";
- $("header-signup").classList.toggle("hidden",yes);
- $("header-profile").classList.toggle("hidden",!yes);
- $("header-profile").textContent=initials(name());
- $("composer-avatar").textContent=initials(name()); $("right-avatar").textContent=initials(name());")+'")':"";story.textContent=src?"":yes?initials(name()):"＋";}
+ if(story){
+  const src=photoURL();
+  story.style.backgroundImage=src?"url("+JSON.stringify(src)+")":"";
+  story.textContent=src?"":yes?initials(name()):"＋";
+ }
  $("creator-name").textContent=yes?name():"Guest creator";
  $("creator-handle").textContent=yes?"@"+handle():"Sign in to build your profile";
  $("account-action").textContent=yes?"Edit your profile":"Create your profile";
  $("my-video-count").textContent=s.posts.filter(p=>p.authorUid===s.user?.uid).length;
  $("my-like-count").textContent=s.posts.filter(p=>p.authorUid===s.user?.uid).reduce((a,p)=>a+(Number(p.likesCount)||0),0);
  $("my-following-count").textContent=s.following.size;
- if($("story-self-photo")) $("story-self-photo").textContent=yes?initials(name()):"＋";
  $("profile-screen-handle").textContent=yes?handle():"your_profile";
  $("profile-screen-name").textContent=yes?name():"Join VibeShorts";
- $("profile-screen-bio-text").textContent=yes?(s.profile?.bio||"Welcome to my VibeShorts page."): "Sign in or create an account to share reels, follow creators and build your profile.";
+ $("profile-screen-bio-text").textContent=yes?(s.profile?.bio||"Welcome to my VibeShorts page."):"Sign in or create an account to share reels, follow creators and build your profile.";
  $("profile-screen-post-count").textContent=yes?(s.profileItems.length||s.posts.filter(p=>p.authorUid===s.user?.uid).length):"—";
  $("profile-screen-follower-count").textContent=yes?s.profileFollowers:"—";
  $("profile-screen-following-count").textContent=yes?s.profileFollowing:"—";
@@ -130,7 +127,7 @@ function accountUI(){
  $("profile-screen-signup").classList.toggle("hidden",yes);
  $("profile-screen-edit").classList.toggle("hidden",!yes);
  $("profile-screen-share").classList.toggle("hidden",!yes);
- if(s.screen==="profile") renderProfileGrid();
+ if(s.screen==="profile")renderProfileGrid();
 }
 function formatCount(n){
  const v=Number(n)||0;
