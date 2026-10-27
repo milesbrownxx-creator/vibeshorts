@@ -16,8 +16,9 @@
 <body>
   <div id="app">
     <header class="topbar">
+      <button id="top-create" class="top-icon-btn" aria-label="Create a reel" title="Create a reel">＋</button>
       <a class="brand" href="#home" aria-label="VibeShorts home"><img class="brand-mark" src="/vibe-icon.svg" alt="" width="37" height="37" /><span>Vibe<span class="brand-accent">Shorts</span></span></a>
-      <div class="top-actions"><span id="connection-state" class="connection"><i></i><span>Demo preview</span></span><button id="header-auth" class="btn btn-outline">Sign in</button><button id="header-signup" class="btn btn-primary">Sign up</button><button id="header-profile" class="avatar-button hidden" aria-label="Account menu">A</button></div>
+      <div class="top-actions"><span id="connection-state" class="connection"><i></i><span>Demo preview</span></span><button id="header-auth" class="btn btn-outline">Sign in</button><button id="header-signup" class="btn btn-primary">Sign up</button><button id="header-profile" class="avatar-button hidden" aria-label="Edit profile">A</button><button id="top-activity" class="top-icon-btn" aria-label="Community activity" title="Community activity">♡</button></div>
     </header>
     <div class="app-layout">
       <aside class="sidebar desktop-only">
@@ -32,11 +33,47 @@
         <div class="side-foot">VibeShorts © 2026 · Prototype</div>
       </aside>
       <main class="main-column">
-        <section class="welcome-row"><div><p class="eyebrow">YOUR WORLD, IN MOTION</p><h1>Catch the <span class="gradient-text">vibe.</span></h1><p class="muted welcome-subtitle">Fresh clips, bold ideas, real creators.</p></div><button id="welcome-create" class="btn btn-primary create-cta">＋ Create</button></section>
-        <section class="feed-switcher" aria-label="Feed filter"><button class="feed-tab active" data-filter="For You">For You</button><button class="feed-tab" data-filter="Following">Following</button><button class="feed-tab" data-filter="Trending">🔥 Trending</button></section>
-        <section class="composer panel"><div class="avatar avatar-glow" id="composer-avatar">V</div><button id="composer-open" class="composer-input">Got a vibe to share? Upload a short video…</button><button id="composer-plus" class="btn btn-primary">＋</button></section>
-        <div id="notice" class="notice hidden" role="status"></div>
-        <section id="feed" class="feed" aria-live="polite"></section>
+        <div id="home-screen" class="app-screen">
+          <section class="welcome-row"><div><p class="eyebrow">YOUR WORLD, IN MOTION</p><h1>Catch the <span class="gradient-text">vibe.</span></h1><p class="muted welcome-subtitle">Fresh clips, bold ideas, real creators.</p></div><button id="welcome-create" class="btn btn-primary create-cta">＋ Create</button></section>
+          <section class="stories-strip" aria-label="Stories and creators">
+            <button class="story-item story-self" id="story-self" aria-label="Create your first story"><span class="story-ring"><span class="story-photo story-photo-self" id="story-self-photo">＋</span><span class="story-add">＋</span></span><span class="story-name">Your story</span></button>
+            <button class="story-item" data-story-preview="creator"><span class="story-ring"><span class="story-photo story-photo-one">S</span></span><span class="story-name">sam.k</span></button>
+            <button class="story-item" data-story-preview="creator"><span class="story-ring"><span class="story-photo story-photo-two">W</span></span><span class="story-name">wyatt</span></button>
+            <button class="story-item" data-story-preview="creator"><span class="story-ring"><span class="story-photo story-photo-three">L</span></span><span class="story-name">liam.b</span></button>
+            <button class="story-item" data-story-preview="creator"><span class="story-ring"><span class="story-photo story-photo-four">M</span></span><span class="story-name">maria.v</span></button>
+          </section>
+          <section class="feed-switcher" aria-label="Feed filter"><button class="feed-tab active" data-filter="For You">For You</button><button class="feed-tab" data-filter="Following">Following</button><button class="feed-tab" data-filter="Trending">🔥 Trending</button></section>
+          <section class="composer panel"><div class="avatar avatar-glow" id="composer-avatar">V</div><button id="composer-open" class="composer-input">Share a moment with your community…</button><button id="composer-plus" class="btn btn-primary">＋</button></section>
+          <div id="notice" class="notice hidden" role="status"></div>
+          <section id="feed" class="feed" aria-live="polite"></section>
+        </div>
+
+        <section id="profile-screen" class="profile-screen app-screen hidden" aria-label="Your profile">
+          <div class="profile-screen-top"><button id="profile-home-back" class="profile-top-icon" aria-label="Back to home">‹</button><strong id="profile-screen-handle">your_profile</strong><button id="profile-screen-menu" class="profile-top-icon" aria-label="Profile options">•••</button></div>
+          <div class="profile-overview">
+            <div class="profile-screen-avatar avatar avatar-large" id="profile-screen-avatar">V</div>
+            <div class="profile-stats">
+              <div><b id="profile-screen-post-count">0</b><span>posts</span></div>
+              <div><b id="profile-screen-follower-count">0</b><span>followers</span></div>
+              <div><b id="profile-screen-following-count">0</b><span>following</span></div>
+            </div>
+          </div>
+          <div class="profile-screen-bio"><strong id="profile-screen-name">VibeShorts creator</strong><p id="profile-screen-bio-text" class="muted">Your bio will appear here.</p></div>
+          <div id="profile-screen-buttons" class="profile-screen-buttons">
+            <button id="profile-screen-signin" class="btn btn-outline">Sign in</button>
+            <button id="profile-screen-signup" class="btn btn-primary">Create account</button>
+            <button id="profile-screen-edit" class="btn btn-outline hidden">Edit profile</button>
+            <button id="profile-screen-share" class="btn btn-outline hidden">Share profile</button>
+          </div>
+          <div class="profile-tab-bar" role="tablist" aria-label="Profile posts">
+            <button class="profile-tab active" data-profile-tab="grid" aria-label="Post grid" title="Posts">▦</button>
+            <button class="profile-tab" data-profile-tab="reels" aria-label="Reels" title="Reels">▣</button>
+            <button class="profile-tab" data-profile-tab="reposts" aria-label="Reposts" title="Reposts">⟳</button>
+            <button class="profile-tab" data-profile-tab="tagged" aria-label="Tagged posts" title="Tagged posts">♙</button>
+          </div>
+          <div id="profile-grid" class="profile-grid"><div class="profile-grid-empty"><span>▦</span><strong>Your posts will appear here</strong><p>Upload a video to start building your profile grid.</p><button id="profile-grid-create" class="btn btn-primary">＋ Create your first reel</button></div></div>
+          <div id="profile-screen-message" class="profile-screen-message hidden"></div>
+        </section>
       </main>
       <aside class="rightbar desktop-only">
         <section class="panel account-card"><div class="section-heading"><h2>Creator space</h2><span class="sparkle">✦</span></div><div class="creator-person"><div id="right-avatar" class="avatar avatar-large">V</div><div><strong id="creator-name">Guest creator</strong><p id="creator-handle" class="muted">Sign in to build your profile</p></div></div><div class="stats-row"><div><b id="my-video-count">0</b><span>Videos</span></div><div><b id="my-like-count">0</b><span>Likes</span></div><div><b id="my-following-count">0</b><span>Following</span></div></div><button class="btn btn-outline btn-full" id="account-action">Create your profile</button></section>
@@ -45,7 +82,7 @@
         <p class="right-foot">Community first. Create responsibly.<br><span>Terms · Privacy · Safety</span></p>
       </aside>
     </div>
-    <nav class="mobile-nav"><button class="mobile-nav-item active" data-filter="For You"><span>⌂</span><small>Home</small></button><button class="mobile-nav-item" data-filter="Trending"><span>↗</span><small>Trending</small></button><button class="mobile-create" id="mobile-create" aria-label="Create video">＋</button><button class="mobile-nav-item" id="mobile-ai"><span>✦</span><small>AI Studio</small></button><button class="mobile-nav-item" id="mobile-account"><span>☻</span><small>Profile</small></button></nav>
+    <nav class="mobile-nav" aria-label="Main navigation"><button class="mobile-nav-item active" id="mobile-home" data-filter="For You" aria-label="Home"><span class="nav-symbol">⌂</span><small>Home</small></button><button class="mobile-nav-item" id="mobile-discover" data-filter="Trending" aria-label="Discover"><span class="nav-symbol">⌕</span><small>Discover</small></button><button class="mobile-create" id="mobile-create" aria-label="Create video">＋</button><button class="mobile-nav-item" id="mobile-reels" data-filter="Following" aria-label="Following feed"><span class="nav-symbol">▣</span><small>Reels</small></button><button class="mobile-nav-item" id="mobile-account" aria-label="Profile"><span class="nav-symbol">◉</span><small>Profile</small></button></nav>
   </div>
 
   <div class="modal" id="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title"><div class="modal-card modal-narrow"><div class="modal-top"><div><p class="eyebrow">JOIN THE MOVEMENT</p><h2 id="auth-title">Welcome back</h2><p class="muted" id="auth-subtitle">Sign in to share videos across your devices.</p></div><button class="icon-close" data-close="auth-modal" aria-label="Close">×</button></div><div class="auth-tabs"><button id="auth-tab-signin" class="active">Sign in</button><button id="auth-tab-signup">Create account</button></div><form id="auth-form"><label id="display-name-wrap" class="form-field hidden">Display name<input id="display-name" type="text" autocomplete="name" placeholder="What should we call you?" maxlength="40" /></label><label class="form-field">Email address<input id="auth-email" type="email" autocomplete="email" required placeholder="you@example.com" /></label><label class="form-field">Password<input id="auth-password" type="password" autocomplete="current-password" minlength="6" required placeholder="At least 6 characters" /></label><p id="auth-error" class="form-error hidden"></p><button class="btn btn-primary btn-full" id="auth-submit" type="submit">Sign in</button></form><button class="text-button" id="forgot-password">Forgot password?</button><p class="fine-print">By continuing, you agree to use VibeShorts respectfully. Never post someone else's private content without permission.</p></div></div>
