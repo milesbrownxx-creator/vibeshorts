@@ -94,7 +94,8 @@ function render(){
   const msg=!firebaseReady?"Firebase is not configured. Add the VITE_FIREBASE settings to the deployed build.":s.filter==="Following"&&!s.user?"Sign in to see videos from creators you follow.":s.tag?"No videos found for this hashtag.":"No videos yet. Sign in and publish the first reel.";
   feed.innerHTML='<div class="empty-state"><div class="empty-icon">▶</div><h3>Nothing here yet</h3><p>'+esc(msg)+'</p><button class="btn btn-primary" id="empty-create">Create a video post</button></div>';
  }
- document.querySelectorAll("[data-filter]").forEach(b=>b.classList.toggle("active",b.dataset.filter===s.filter));
+ document.querySelectorAll("[data-filter]").forEach(b=>b.classList.toggle("active",s.screen==="home"&&b.dataset.filter===s.filter));
+ $("mobile-account").classList.toggle("active",s.screen==="profile");
  accountUI();
  if(s.screen==="profile")renderProfileGrid();
 }
