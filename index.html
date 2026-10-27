@@ -8,15 +8,15 @@
   <!-- AdSense publisher ID supplied by owner. Confirm this matches the ID shown in AdSense. -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3927991428568065" crossorigin="anonymous"></script>
   <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="stylesheet" href="/src/style.css" />
   <link rel="icon" href="/vibe-icon.svg" type="image/svg+xml" />
-  <link rel="icon" href="/vibe-icon-192.png" type="image/png" sizes="192x192" />
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" href="/vibe-icon.svg" />
   <title>VibeShorts — Watch · Create · Share</title>
 </head>
 <body>
   <div id="app">
     <header class="topbar">
-      <a class="brand" href="#home" aria-label="VibeShorts home"><img class="brand-mark" src="/vibe-icon-192.png" alt="" width="37" height="37" /><span>Vibe<span class="brand-accent">Shorts</span></span></a>
+      <a class="brand" href="#home" aria-label="VibeShorts home"><img class="brand-mark" src="/vibe-icon.svg" alt="" width="37" height="37" /><span>Vibe<span class="brand-accent">Shorts</span></span></a>
       <div class="top-actions"><span id="connection-state" class="connection"><i></i><span>Demo preview</span></span><button id="header-auth" class="btn btn-outline">Sign in</button><button id="header-signup" class="btn btn-primary">Sign up</button><button id="header-profile" class="avatar-button hidden" aria-label="Account menu">A</button></div>
     </header>
     <div class="app-layout">
@@ -61,5 +61,6 @@
   <div class="modal" id="ai-modal" role="dialog" aria-modal="true" aria-labelledby="ai-title"><div class="modal-card modal-narrow"><div class="modal-top"><div><p class="eyebrow">CREATOR TOOLBOX</p><h2 id="ai-title">✦ AI Script Studio</h2><p class="muted">Turn a topic into a short-video outline.</p></div><button class="icon-close" data-close="ai-modal" aria-label="Close">×</button></div><form id="script-form"><label class="form-field">What is your video about?<input id="script-topic" type="text" required maxlength="140" placeholder="e.g. best budget phones in Uganda" /></label><label class="form-field">Style<select id="script-style"><option value="energetic">Viral and energetic</option><option value="funny">Funny</option><option value="educational">Educational</option><option value="story">Storytelling</option><option value="review">Product review</option></select></label><button class="btn btn-primary btn-full" type="submit">Generate script idea ✨</button></form><label class="form-field script-output-label">Your outline<textarea id="script-output" rows="9" readonly placeholder="Your generated outline will appear here."></textarea></label><div class="button-row"><button id="copy-script" class="btn btn-outline" type="button">Copy script</button><button id="use-script" class="btn btn-primary" type="button">Use as caption</button></div><p class="fine-print">This starter uses a local template, not a live AI model. A real AI API can be connected later through a protected backend.</p></div></div>
   <div id="toast" class="toast" role="status"></div>
   <script type="module" src="/src/main.js"></script>
+  <script>if ("serviceWorker" in navigator) window.addEventListener("load", function () { navigator.serviceWorker.register("/sw.js").catch(function (e) { console.warn("Service worker unavailable", e); }); });</script>
 </body>
 </html>
