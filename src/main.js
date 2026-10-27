@@ -4,7 +4,7 @@ import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, increment, limit, 
 import { getDownloadURL, ref as storageRef, uploadBytesResumable, deleteObject } from "firebase/storage";
 
 const $ = (id) => document.getElementById(id);
-const s = { user:null, profile:null, posts:[], following:new Set(), filter:"For You", tag:"", commentPost:null, stopFeed:null, stopComments:null };
+const s = { user:null, profile:null, posts:[], profileItems:[], profileFollowers:0, profileFollowing:0, profileTab:"grid", screen:"home", following:new Set(), filter:"For You", tag:"", commentPost:null, stopFeed:null, stopComments:null };
 const messages = {
  "auth/email-already-in-use":"That email already has an account. Sign in instead.",
  "auth/invalid-email":"Enter a valid email address.",
@@ -53,13 +53,33 @@ function accountUI(){
  $("my-video-count").textContent=s.posts.filter(p=>p.authorUid===s.user?.uid).length;
  $("my-like-count").textContent=s.posts.filter(p=>p.authorUid===s.user?.uid).reduce((a,p)=>a+(Number(p.likesCount)||0),0);
  $("my-following-count").textContent=s.following.size;
+ if($("story-self-photo")) $("story-self-photo").textContent=yes?initials(name()):"＋";
+ $("profile-screen-handle").textContent=yes?handle():"your_profile";
+ $("profile-screen-avatar").textContent=initials(name());
+ $("profile-screen-name").textContent=yes?name():"Join VibeShorts";
+ $("profile-screen-bio-text").textContent=yes?(s.profile?.bio||"Welcome to my VibeShorts page."): "Sign in or create an account to share reels, follow creators and build your profile.";
+ $("profile-screen-post-count").textContent=yes?(s.profileItems.length||s.posts.filter(p=>p.authorUid===s.user?.uid).length):"—";
+ $("profile-screen-follower-count").textContent=yes?s.profileFollowers:"—";
+ $("profile-screen-following-count").textContent=yes?s.profileFollowing:"—";
+ $("profile-screen-signin").classList.toggle("hidden",yes);
+ $("profile-screen-signup").classList.toggle("hidden",yes);
+ $("profile-screen-edit").classList.toggle("hidden",!yes);
+ $("profile-screen-share").classList.toggle("hidden",!yes);
+ if(s.screen==="profile") renderProfileGrid();
+}
+function formatCount(n){
+ const v=Number(n)||0;
+ if(v>=1e6)return (v/1e6).toFixed(v>=1e7?0:1).replace(/\.0$/,"")+"M";
+ if(v>=1e3)return (v/1e3).toFixed(v>=1e4?0:1).replace(/\.0$/,"")+"K";
+ return String(v);
 }
 function postCard(p){
  const url=safeUrl(p.videoURL); if(!url)return "";
  const id=esc(p.id), n=esc(p.authorName||"Creator"), h=esc(p.authorHandle||"creator"), cap=esc(p.caption||""), tag=esc(p.tags||"");
  const mine=s.user?.uid===p.authorUid;
+ const saved=(()=>{try{return (JSON.parse(localStorage.getItem("vibeshorts-saved")||"[]")).includes(p.id);}catch{return false;}})();
  const tagHtml=tag.split(/\s+/).filter(x=>x.startsWith("#")).map(x=>'<button data-tag="'+esc(x.slice(1))+'">'+esc(x)+'</button>').join(" ");
- return '<article class="reel-card" id="post-'+id+'"><div class="reel-head"><button class="creator-link" data-profile="'+esc(p.authorUid)+'"><span class="avatar">'+esc(initials(p.authorName))+'</span><span class="creator-meta"><strong>'+n+'</strong><small>@'+h+' · '+esc(dateText(p.createdAt))+'</small></span></button>'+(mine?'<button class="icon-button" data-delete-post="'+id+'" aria-label="Delete post">⋯</button>':'')+'</div><video class="reel-video" src="'+esc(url)+'" controls playsinline preload="metadata"></video><div class="reel-body">'+(cap?'<p class="reel-caption">'+cap+'</p>':'')+(tagHtml?'<p class="reel-tags">'+tagHtml+'</p>':'')+'<div class="reel-actions"><button data-like-post="'+id+'">♡ <span>'+(Number(p.likesCount)||0)+'</span></button><button data-comments-post="'+id+'">Comments</button><button data-share-post="'+id+'">Share</button></div></div></article>';
+ return '<article class="reel-card insta-post" id="post-'+id+'"><header class="insta-post-header"><button class="creator-link" data-profile="'+esc(p.authorUid)+'"><span class="avatar">'+esc(initials(p.authorName))+'</span><span class="creator-meta"><strong>'+n+'</strong><small>@'+h+' · '+esc(dateText(p.createdAt))+'</small></span></button>'+(mine?'<button class="icon-button" data-delete-post="'+id+'" aria-label="Delete post">•••</button>':'<button class="icon-button" aria-label="More options" data-post-more="'+id+'">•••</button>')+'</header><video class="reel-video" src="'+esc(url)+'" controls playsinline preload="metadata"></video><div class="insta-post-content"><div class="insta-actions"><div class="insta-actions-left"><button class="social-icon" data-like-post="'+id+'" aria-label="Like reel">♡</button><button class="social-icon" data-comments-post="'+id+'" aria-label="Comments">◯</button><button class="social-icon" data-share-post="'+id+'" aria-label="Share reel">➤</button></div><button class="social-icon save-post '+(saved?"is-saved":"")+'" data-save-post="'+id+'" aria-label="'+(saved?"Remove saved reel":"Save reel")+'">'+(saved?"▣":"♧")+'</button></div><p class="insta-like-count">'+formatCount(p.likesCount||0)+' likes</p>'+(cap?'<p class="insta-caption"><strong>'+n+'</strong> '+cap+'</p>':'')+(tagHtml?'<p class="reel-tags">'+tagHtml+'</p>':'')+'<button class="view-comments" data-comments-post="'+id+'">View comments</button><div class="insta-date">'+esc(dateText(p.createdAt))+'</div></div></article>';
 }
 function visible(){
  let p=s.posts.slice();
@@ -76,7 +96,66 @@ function render(){
  }
  document.querySelectorAll("[data-filter]").forEach(b=>b.classList.toggle("active",b.dataset.filter===s.filter));
  accountUI();
+ if(s.screen==="profile")renderProfileGrid();
 }
+
+function switchScreen(screen){
+ s.screen=screen;
+ $("home-screen").classList.toggle("hidden",screen!=="home");
+ $("profile-screen").classList.toggle("hidden",screen!=="profile");
+ document.querySelectorAll(".mobile-nav-item").forEach(b=>b.classList.toggle("active",b.id==="mobile-account"?screen==="profile":screen==="home"&&b.dataset.filter===s.filter));
+ if(screen==="profile"){ accountUI(); renderProfileGrid(); }
+ window.scrollTo({top:0,behavior:"smooth"});
+}
+function renderProfileGrid(){
+ const grid=$("profile-grid"); if(!grid)return;
+ document.querySelectorAll("[data-profile-tab]").forEach(b=>b.classList.toggle("active",b.dataset.profileTab===s.profileTab));
+ if(!s.user){
+  grid.innerHTML='<div class="profile-grid-empty"><span>◉</span><strong>Your profile starts here</strong><p>Sign in or create an account to share your own reels.</p><button id="profile-grid-create" class="btn btn-primary">＋ Create an account</button></div>';
+  return;
+ }
+ if(s.profileTab==="reposts"||s.profileTab==="tagged"){
+  grid.innerHTML='<div class="profile-grid-empty"><span>'+(s.profileTab==="reposts"?"⟳":"♙")+'</span><strong>'+(s.profileTab==="reposts"?"No reposts yet":"No tagged videos yet")+'</strong><p>These items will appear here when the feature is available.</p></div>';return;
+ }
+ const items=s.profileItems.filter(p=>safeUrl(p.videoURL));
+ if(!items.length){
+  grid.innerHTML='<div class="profile-grid-empty"><span>▦</span><strong>Your posts will appear here</strong><p>Upload a video to start building your profile grid.</p><button id="profile-grid-create" class="btn btn-primary">＋ Create your first reel</button></div>';return;
+ }
+ grid.innerHTML=items.map(p=>'<button class="profile-grid-tile" data-profile-post="'+esc(p.id)+'" aria-label="Open reel"><video src="'+esc(safeUrl(p.videoURL))+'" muted playsinline preload="metadata"></video><span class="grid-tile-overlay"><b>▶</b><span>'+formatCount(p.likesCount||0)+' likes</span></span></button>').join("");
+}
+async function showOwnProfile(){
+ switchScreen("profile");
+ if(!s.user){s.profileItems=[];s.profileFollowers=0;s.profileFollowing=0;accountUI();renderProfileGrid();return;}
+ if(!firebaseReady||!db){toast("Firebase is not connected in this build.",true);return;}
+ $("profile-screen-bio-text").textContent="Loading your profile…";
+ try{
+  const uid=s.user.uid;
+  const [pSnap,followers,following,posts]=await Promise.all([
+   getDoc(doc(db,"profiles",uid)),
+   getDocs(collection(db,"profiles",uid,"followers")),
+   getDocs(collection(db,"profiles",uid,"following")),
+   getDocs(query(collection(db,"posts"),where("authorUid","==",uid),limit(60)))
+  ]);
+  if(pSnap.exists())s.profile=pSnap.data();
+  s.profileFollowers=followers.size;s.profileFollowing=following.size;
+  s.profileItems=posts.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.toMillis?.()||0)-(a.createdAt?.toMillis?.()||0));
+  accountUI();renderProfileGrid();
+ }catch(e){console.error("Profile load:",e);$("profile-screen-bio-text").textContent="Profile details could not load: "+err(e);toast("Could not load your profile.",true);}
+}
+async function shareOwnProfile(){
+ if(!s.user)return askLogin("Sign in before sharing your profile.");
+ const url=location.origin+location.pathname+"?profile="+encodeURIComponent(s.user.uid);
+ try{if(navigator.share)await navigator.share({title:name()+" on VibeShorts",text:"Watch my VibeShorts reels",url});else{await navigator.clipboard.writeText(url);toast("Profile link copied.");}}
+ catch(e){if(e?.name!=="AbortError")toast("Could not share the profile link.",true);}
+}
+function toggleSavedPost(id){
+ try{
+  const saved=new Set(JSON.parse(localStorage.getItem("vibeshorts-saved")||"[]"));
+  if(saved.has(id)){saved.delete(id);toast("Removed from saved reels.");}else{saved.add(id);toast("Reel saved on this device.");}
+  localStorage.setItem("vibeshorts-saved",JSON.stringify([...saved]));render();
+ }catch(e){toast("This browser could not save the reel.",true);}
+}
+
 function startFeed(){
  if(!firebaseReady){connection("Firebase not configured","error");render();return;}
  s.stopFeed?.();
@@ -172,10 +251,30 @@ async function authSubmit(e){
  catch(error){problem("auth-error",err(error));}finally{b.disabled=false;}
 }
 async function resetPassword(){const email=$("auth-email").value.trim();if(!email)return problem("auth-error","Enter your email address first.");try{await sendPasswordResetEmail(auth,email);toast("Password reset email sent. Check your inbox.");clearProblem("auth-error");}catch(e){problem("auth-error",err(e));}}
-function filterTo(f){s.filter=f;s.tag="";render();$("feed").scrollIntoView({behavior:"smooth",block:"start"});}
+function filterTo(f){s.filter=f;s.tag="";switchScreen("home");render();$("feed").scrollIntoView({behavior:"smooth",block:"start"});}
 function makeScript(e){e.preventDefault();const topic=$("script-topic").value.trim(),style=$("script-style").value;if(!topic)return;const hooks={energetic:"Wait — here is what you need to know about ",funny:"I thought I knew ",educational:"Here are three useful things about ",story:"Let me tell you a quick story about ",review:"Before you choose "};$("script-output").value="HOOK (0–3 sec)\n"+(hooks[style]||hooks.energetic)+topic+".\n\nMAIN POINT (3–20 sec)\nShow one useful detail about "+topic+". Explain it simply and include a concrete example.\n\nPAYOFF (20–30 sec)\nSummarize the key lesson.\n\nCALL TO ACTION\n“What should I cover next? Leave your question below.”\n\nThis is a template outline, not a response from a live AI service.";}
 function wire(){
  $("header-auth").addEventListener("click",()=>s.user?signOut(auth).then(()=>toast("Signed out." )).catch(e=>toast(err(e),true)):(mode("signin"),open("auth-modal")));
+ $("top-create").addEventListener("click",openUpload);
+ $("top-activity").addEventListener("click",()=>s.user?showOwnProfile():askLogin("Sign in to open your account."));
+ $("story-self").addEventListener("click",openUpload);
+ document.querySelectorAll("[data-story-preview]").forEach(b=>b.addEventListener("click",()=>toast("Stories are a visual preview for now. Watch published reels in the feed.")));
+ $("mobile-account").addEventListener("click",showOwnProfile);
+ $("profile-home-back").addEventListener("click",()=>switchScreen("home"));
+ $("profile-screen-menu").addEventListener("click",()=>s.user?editProfile():askLogin("Create an account to set up your profile."));
+ $("profile-screen-signin").addEventListener("click",()=>{mode("signin");open("auth-modal");});
+ $("profile-screen-signup").addEventListener("click",()=>{mode("signup");open("auth-modal");});
+ $("profile-screen-edit").addEventListener("click",editProfile);
+ $("profile-screen-share").addEventListener("click",shareOwnProfile);
+ $("profile-grid-create").addEventListener("click",()=>s.user?openUpload():(mode("signup"),open("auth-modal")));
+ document.querySelectorAll("[data-profile-tab]").forEach(b=>b.addEventListener("click",()=>{s.profileTab=b.dataset.profileTab;renderProfileGrid();}));
+ document.addEventListener("click",async e=>{
+  const tile=e.target.closest("[data-profile-post]");
+  if(tile){switchScreen("home");const card=$("post-"+tile.dataset.profilePost);if(card)card.scrollIntoView({behavior:"smooth",block:"start"});else toast("This reel is on your profile. Refresh the feed to load older posts.");return;}
+  const save=e.target.closest("[data-save-post]");if(save){toggleSavedPost(save.dataset.savePost);return;}
+  const more=e.target.closest("[data-post-more]");if(more){toast("More creator tools will be added here.");return;}
+  if(e.target.closest("#profile-grid-create")){s.user?openUpload():(mode("signup"),open("auth-modal"));return;}
+ });
  $("header-signup").addEventListener("click",()=>{mode("signup");open("auth-modal");});$("header-profile").addEventListener("click",editProfile);
  $("auth-tab-signin").addEventListener("click",()=>mode("signin"));$("auth-tab-signup").addEventListener("click",()=>mode("signup"));$("auth-form").addEventListener("submit",authSubmit);$("forgot-password").addEventListener("click",resetPassword);
  $("account-action").addEventListener("click",()=>s.user?editProfile():(mode("signup"),open("auth-modal")));$("profile-edit-form").addEventListener("submit",saveProfile);
@@ -184,7 +283,7 @@ function wire(){
  $("use-script").addEventListener("click",()=>{$("video-caption").value=$("script-output").value.slice(0,1200);close("ai-modal");openUpload();});
  ["side-create","promo-create","welcome-create","composer-open","composer-plus","mobile-create"].forEach(id=>$(id)?.addEventListener("click",openUpload));
  ["side-ai","mobile-ai"].forEach(id=>$(id)?.addEventListener("click",()=>open("ai-modal")));
- $("mobile-account").addEventListener("click",()=>s.user?openProfile(s.user.uid):askLogin("Sign in to open your creator profile."));
+ // Profile navigation is wired above to the main profile screen.
  document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>close(b.dataset.close)));
  document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)close(m.id);}));
  document.addEventListener("keydown",e=>{if(e.key==="Escape")document.querySelectorAll(".modal.open").forEach(m=>close(m.id));});
@@ -206,6 +305,6 @@ async function init(){
  wire();mode("signin");
  if(!firebaseReady){connection("Firebase not configured","error");notice("Firebase settings are missing. Add the VITE_FIREBASE_* values, rebuild and redeploy; sign-up and video posting need Firebase.",true);render();return;}
  connection("Connecting…","pending");startFeed();
- onAuthStateChanged(auth,async u=>{s.user=u;s.profile=null;if(u){try{s.profile=await ensureProfile(u);}catch(e){console.error("Profile setup failed:",e);toast("Profile setup failed: "+err(e),true);}}await getFollowing();accountUI();render();const id=new URLSearchParams(location.search).get("profile");if(id)openProfile(id);});
+ onAuthStateChanged(auth,async u=>{s.user=u;s.profile=null;if(u){try{s.profile=await ensureProfile(u);}catch(e){console.error("Profile setup failed:",e);toast("Profile setup failed: "+err(e),true);}}await getFollowing();accountUI();render();const id=new URLSearchParams(location.search).get("profile");if(id)openProfile(id);if(s.screen==="profile"&&u)showOwnProfile();});
 }
 init();
