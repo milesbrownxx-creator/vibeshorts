@@ -26,7 +26,8 @@ service cloud.firestore {
         && request.resource.data.handle is string
         && request.resource.data.handle.size() <= 25
         && request.resource.data.bio is string
-        && request.resource.data.bio.size() <= 160;
+        && request.resource.data.bio.size() <= 160
+        && (!('avatarURL' in request.resource.data) || (request.resource.data.avatarURL is string && request.resource.data.avatarURL.size() <= 2048));
       allow delete: if signedIn() && request.auth.uid == uid;
 
       match /following/{targetUid} {
