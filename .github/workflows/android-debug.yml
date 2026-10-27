@@ -42,8 +42,6 @@ jobs:
         run: npm run android:add
       - name: Sync web assets to Android
         run: npx cap sync android
-      - name: Install required Android SDK packages
-        run: sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
       - name: Build debug APK
         run: cd android && chmod +x gradlew && ./gradlew assembleDebug
       - name: Upload test APK
