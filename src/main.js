@@ -44,7 +44,7 @@ function avatarHTML(label,url){
 function inferVideoMime(file){
  if(file?.type?.startsWith("video/"))return file.type;
  const ext=String(file?.name||"").toLowerCase().split(".").pop();
- return ({mp4:"video/mp4",m4v:"video/x-m4v",mov:"video/quicktime",webm:"video/webm",ogv:"video/ogg",ogg:"video/ogg",3gp:"video/3gpp",3gpp:"video/3gpp",mkv:"video/x-matroska",avi:"video/x-msvideo",mpeg:"video/mpeg",mpg:"video/mpeg"}[ext]||"");
+ return ({mp4:"video/mp4",m4v:"video/x-m4v",mov:"video/quicktime",webm:"video/webm",ogv:"video/ogg",ogg:"video/ogg","3gp":"video/3gpp","3gpp":"video/3gpp",mkv:"video/x-matroska",avi:"video/x-msvideo",mpeg:"video/mpeg",mpg:"video/mpeg"}[ext]||"");
 }
 function inferImageMime(file){
  if(file?.type?.startsWith("image/"))return file.type;
