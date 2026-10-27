@@ -41,7 +41,7 @@ function setAvatar(el,url,fallback,allowBlob=false){
  if(!el)return;
  let src=safeUrl(url);
  if(!src&&allowBlob&&typeof url==="string"&&url.startsWith("blob:"))src=url;
- el.replaceChildren();
+ el.textContent="";
  el.classList.toggle("avatar-has-image",!!src);
  if(src){const img=document.createElement("img");img.className="avatar-image";img.src=src;img.alt="";img.draggable=false;el.appendChild(img);}
  else el.textContent=fallback||"V";
