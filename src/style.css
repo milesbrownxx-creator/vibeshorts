@@ -249,3 +249,8 @@ html[data-theme="dark"] .notice-error,html[data-theme="dark"] .form-error{backgr
 html[data-theme="dark"] .btn-outline{background:#24252d!important;border-color:#3a3b44!important;color:#f2f2f5!important}
 html[data-theme="dark"] .btn:not(.btn-primary){color:#f2f2f5!important}
 html[data-theme="dark"] .btn-primary{color:#fff!important}
+
+.topbar #top-theme{display:inline-flex;align-items:center;justify-content:center;width:34px;height:36px;border:0;background:transparent;color:#171717;border-radius:50%;font-size:20px;line-height:1}
+.topbar #top-theme:hover{background:#f2f2f2}
+html[data-theme="dark"] .topbar #top-theme{color:#f4f4f5!important}
+html[data-theme="dark"] .topbar #top-theme:hover{background:#292a32!important}
